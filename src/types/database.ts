@@ -88,34 +88,41 @@ export type Database = {
       users: {
         Row: User;
         Insert: Omit<User, "id" | "created_at">;
-        Update: Partial<User>;
+        Update: Partial<Omit<User, "id" | "created_at">>;
       };
       restaurants: {
         Row: Restaurant;
         Insert: Omit<Restaurant, "id" | "created_at">;
-        Update: Partial<Restaurant>;
+        Update: Partial<Omit<Restaurant, "id" | "created_at">>;
       };
-      tables: { Row: Table; Insert: Omit<Table, "id">; Update: Partial<Table> };
+      tables: {
+        Row: Table;
+        Insert: Omit<Table, "id">;
+        Update: Partial<Omit<Table, "id">>;
+      };
       menu_items: {
         Row: MenuItem;
         Insert: Omit<MenuItem, "id">;
-        Update: Partial<MenuItem>;
+        Update: Partial<Omit<MenuItem, "id">>;
       };
       reservations: {
         Row: Reservation;
         Insert: Omit<Reservation, "id" | "created_at">;
-        Update: Partial<Reservation>;
+        Update: Partial<Omit<Reservation, "id" | "created_at">>;
       };
       orders: {
         Row: Order;
         Insert: Omit<Order, "id" | "created_at">;
-        Update: Partial<Order>;
+        Update: Partial<Omit<Order, "id" | "created_at">>;
       };
       order_items: {
         Row: OrderItem;
         Insert: Omit<OrderItem, "id">;
-        Update: Partial<OrderItem>;
+        Update: Partial<Omit<OrderItem, "id">>;
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
   };
 };
