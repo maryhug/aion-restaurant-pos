@@ -1,5 +1,5 @@
-import { dishes } from "@/src/data/dishes";
-import { cosineSimilarity, getEmbedding } from "@/src/lib/vectorUtils";
+import { dishes } from "@/data/dishes";
+import { cosineSimilarity, getEmbedding } from "@/vectorUtils";
 
 export async function POST(req: Request) {
   const { message } = await req.json();

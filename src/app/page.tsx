@@ -1,4 +1,4 @@
-import Chat from "@/src/components/ChatComponent";
+import Chat from "@/components/ChatComponent";
 import Image from "next/image";
 
 export default function Home() {
