@@ -53,6 +53,7 @@ export default function ReservarPage() {
   const [form, setForm] = useState<ReservationFormData>({
     name: "",
     email: "",
+    phone: "",
     date: "",
     time: "",
     partySize: 1,
@@ -65,10 +66,11 @@ export default function ReservarPage() {
   const [loadingTables, setLoadingTables] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<ReservationConfirmation | null>(null);
+  const [confirmation, setConfirmation] =
+    useState<ReservationConfirmation | null>(null);
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -100,7 +102,7 @@ export default function ReservarPage() {
         RESTAURANT_ID,
         form.date,
         form.time,
-        form.partySize
+        form.partySize,
       );
       setAvailableTables(tables);
       setTablesSearched(true);
@@ -172,6 +174,7 @@ export default function ReservarPage() {
             setForm({
               name: "",
               email: "",
+              phone: "",
               date: "",
               time: "",
               partySize: 1,
@@ -230,6 +233,21 @@ export default function ReservarPage() {
           {errors.email && (
             <p className="text-red-500 text-xs mt-1">{errors.email}</p>
           )}
+        </div>
+
+        {/* Teléfono */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Teléfono
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            placeholder="+57 300 000 0000"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
         </div>
 
         {/* Fecha / Hora / Personas */}
@@ -355,7 +373,3 @@ export default function ReservarPage() {
     </main>
   );
 }
-
-
-
-
