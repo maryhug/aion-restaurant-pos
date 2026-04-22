@@ -65,10 +65,11 @@ export default function ReservarPage() {
   const [loadingTables, setLoadingTables] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<ReservationConfirmation | null>(null);
+  const [confirmation, setConfirmation] =
+    useState<ReservationConfirmation | null>(null);
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -100,7 +101,7 @@ export default function ReservarPage() {
         RESTAURANT_ID,
         form.date,
         form.time,
-        form.partySize
+        form.partySize,
       );
       setAvailableTables(tables);
       setTablesSearched(true);
@@ -355,7 +356,3 @@ export default function ReservarPage() {
     </main>
   );
 }
-
-
-
-
