@@ -6,8 +6,9 @@ export type AvailableTable = Pick<Table, "id" | "number" | "capacity">;
 export interface ReservationFormData {
   name: string;
   email: string;
-  date: string;   // YYYY-MM-DD
-  time: string;   // HH:MM
+  phone: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
   partySize: number;
   tableId: string;
 }
@@ -36,7 +37,7 @@ export async function getAvailableTables(
   restaurantId: string,
   date: string,
   time: string,
-  partySize: number
+  partySize: number,
 ): Promise<AvailableTable[]> {
   // 1. IDs de mesas ya reservadas en esa fecha/hora
   const { data: busyReservations, error: busyError } = await supabase
@@ -50,9 +51,9 @@ export async function getAvailableTables(
     throw new Error(`Error buscando reservas existentes: ${busyError.message}`);
   }
 
-const busyIds: string[] = (busyReservations ?? []).map(
-  (r: { table_id: string }) => r.table_id
-);
+  const busyIds: string[] = (busyReservations ?? []).map(
+    (r: { table_id: string }) => r.table_id,
+  );
   // 2. Mesas con capacidad suficiente y no ocupadas
   let query = supabase
     .from("tables")
@@ -79,9 +80,8 @@ const busyIds: string[] = (busyReservations ?? []).map(
  */
 export async function createReservation(
   formData: ReservationFormData,
-  userId: string
+  userId: string,
 ): Promise<ReservationConfirmation> {
-
   type ReservationRow = {
     id: string;
     date: string;
@@ -93,9 +93,8 @@ export async function createReservation(
     number: number;
   };
 
-
   // Paso 1: crear la reserva
-// Paso 1: crear la reserva (usando cliente sin tipos para evitar conflicto)
+  // Paso 1: crear la reserva (usando cliente sin tipos para evitar conflicto)
   const reservationQuery = supabaseRaw
     .from("reservations")
     .insert({
@@ -116,7 +115,7 @@ export async function createReservation(
     };
   if (reservationError || !reservationData) {
     throw new Error(
-      `Error al crear la reserva: ${reservationError?.message ?? "sin datos"}`
+      `Error al crear la reserva: ${reservationError?.message ?? "sin datos"}`,
     );
   }
 
@@ -134,7 +133,7 @@ export async function createReservation(
 
   if (tableError || !tableData) {
     throw new Error(
-      `Error al obtener la mesa: ${tableError?.message ?? "sin datos"}`
+      `Error al obtener la mesa: ${tableError?.message ?? "sin datos"}`,
     );
   }
 
