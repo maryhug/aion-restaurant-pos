@@ -1,27 +1,21 @@
 import { aion } from "@/lib/aion/tokens";
 import { formatCOP } from "@/lib/aion/currency";
 import { AionAdminSidebar } from "@/components/aion/admin/sidebar-nav";
+import { getAdminDashboardData } from "@/lib/db/admin-dashboard";
 
-const week = [
-  { d: "Lun", h: 1800 },
-  { d: "Mar", h: 1400 },
-  { d: "Mie", h: 1900 },
-  { d: "Jue", h: 1500 },
-  { d: "Vie", h: 1400 },
-  { d: "Sab", h: 2200 },
-  { d: "Dom", h: 1300 },
-];
-const maxH = 3200;
+function deltaText(value: number) {
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
 
-const top: { name: string; n: string; rev: string }[] = [
-  { name: "Risotto de Hongos", n: "59", rev: formatCOP(1416000) },
-  { name: "Limonada Natural", n: "48", rev: formatCOP(144000) },
-  { name: "Bruschetta Mediterránea", n: "42", rev: formatCOP(504000) },
-  { name: "Ensalada César", n: "38", rev: formatCOP(532000) },
-  { name: "Vino Tinto de la Casa", n: "33", rev: formatCOP(165000) },
-];
+export default async function AionAdminDashboardPage() {
+  const data = await getAdminDashboardData();
+  const maxH = Math.max(...data.salesByDay.map((d) => d.amount), 1);
+  const topCategoryTotal = data.categoryDistribution.reduce(
+    (sum, c) => sum + c.quantity,
+    0,
+  );
 
-export default function AionAdminDashboardPage() {
   return (
     <>
       <AionAdminSidebar current="dashboard" />
@@ -33,34 +27,57 @@ export default function AionAdminDashboardPage() {
           Panel de ventas
         </h1>
         <p className="text-sm" style={{ color: aion.colors.muted }}>
-          Vista demo — conecta KPIs reales desde el módulo Admin
+          KPIs en tiempo real desde la base de datos
         </p>
         <div className="mt-3 grid list-none grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               t: "Ventas totales",
-              v: formatCOP(15660000),
-              d: "+12.5%",
-              u: true,
+              v: formatCOP(data.kpi.totalSales),
+              d: deltaText(data.kpi.totalSalesDeltaPct),
+              u: data.kpi.totalSalesDeltaPct >= 0,
             },
-            { t: "Pedidos", v: "35", d: "+8.2%", u: true },
-            { t: "Ticket promedio", v: formatCOP(447430), d: "+3.1%", u: true },
-            { t: "Clientes", v: "28", d: "−2.4%", u: false },
+            {
+              t: "Pedidos",
+              v: String(data.kpi.orders),
+              d: deltaText(data.kpi.ordersDeltaPct),
+              u: data.kpi.ordersDeltaPct >= 0,
+            },
+            {
+              t: "Ticket promedio",
+              v: formatCOP(data.kpi.avgTicket),
+              d: deltaText(data.kpi.avgTicketDeltaPct),
+              u: data.kpi.avgTicketDeltaPct >= 0,
+            },
+            {
+              t: "Clientes",
+              v: String(data.kpi.customers),
+              d: deltaText(data.kpi.customersDeltaPct),
+              u: data.kpi.customersDeltaPct >= 0,
+            },
           ].map((k) => (
             <li
               key={k.t}
               className="flex flex-1 items-center justify-between gap-2 rounded-2xl bg-white p-3 ring-1 ring-black/5"
             >
               <div>
-                <p className="text-xs" style={{ color: aion.colors.muted }}>{k.t}</p>
+                <p className="text-xs" style={{ color: aion.colors.muted }}>
+                  {k.t}
+                </p>
                 <p
                   className="text-2xl font-extrabold"
                   style={{ color: aion.colors.text }}
-                >{k.v}</p>
+                >
+                  {k.v}
+                </p>
                 <p
                   className="text-sm font-bold"
-                  style={{ color: k.u ? aion.colors.success : aion.colors.danger }}
-                >{k.d}</p>
+                  style={{
+                    color: k.u ? aion.colors.success : aion.colors.danger,
+                  }}
+                >
+                  {k.d}
+                </p>
               </div>
               <div
                 className="grid size-9 shrink-0 place-items-center rounded-xl text-sm"
@@ -77,18 +94,20 @@ export default function AionAdminDashboardPage() {
             <h2
               className="text-sm font-extrabold"
               style={{ color: aion.colors.text }}
-            >Ventas por día</h2>
-            <p
-              className="text-xs"
-              style={{ color: aion.colors.muted }}
-            >Ingresos de la semana (demo)</p>
-            <div
-              className="mt-3 flex h-44 items-end justify-between gap-0.5 border-b border-l border-stone-200 pl-0.5 sm:pl-1"
             >
-              {week.map((w) => {
-                const pct = Math.max(0.1, (w.h / maxH) * 100);
+              Ventas por día
+            </h2>
+            <p className="text-xs" style={{ color: aion.colors.muted }}>
+              Ingresos de los últimos 7 días
+            </p>
+            <div className="mt-3 flex h-44 items-end justify-between gap-0.5 border-b border-l border-stone-200 pl-0.5 sm:pl-1">
+              {data.salesByDay.map((w) => {
+                const pct = Math.max(0.1, (w.amount / maxH) * 100);
                 return (
-                  <div key={w.d} className="flex flex-1 flex-col items-center">
+                  <div
+                    key={w.dayLabel}
+                    className="flex flex-1 flex-col items-center"
+                  >
                     <div
                       className="w-4/5 max-w-[2rem] min-h-[0.5rem] rounded-t-md sm:max-w-[2.5rem]"
                       style={{
@@ -96,58 +115,69 @@ export default function AionAdminDashboardPage() {
                         background: "#600020",
                         minHeight: "8px",
                       }}
-                      title={`${w.d}`}
+                      title={`${w.dayLabel}: ${formatCOP(w.amount)}`}
                     />
-                    <p className="text-[9px] sm:text-[10px] mt-1" style={{ color: aion.colors.muted }}>{w.d}</p>
+                    <p
+                      className="text-[9px] sm:text-[10px] mt-1"
+                      style={{ color: aion.colors.muted }}
+                    >
+                      {w.dayLabel}
+                    </p>
                   </div>
                 );
               })}
             </div>
           </li>
-          <li
-            className="flex min-h-[240px] flex-1 flex-col rounded-2xl bg-white p-3 ring-1 ring-black/5"
-          >
+          <li className="flex min-h-[240px] flex-1 flex-col rounded-2xl bg-white p-3 ring-1 ring-black/5">
             <h2
               className="text-sm font-extrabold"
               style={{ color: aion.colors.text }}
-            >Por categoría</h2>
-            <p
-              className="text-xs"
-              style={{ color: aion.colors.muted }}
-            >Distribución de ventas (demo)</p>
+            >
+              Por categoría
+            </h2>
+            <p className="text-xs" style={{ color: aion.colors.muted }}>
+              Distribución por cantidad vendida este mes
+            </p>
             <div className="mt-2 flex flex-1 items-center justify-center gap-4">
-              <div
-                className="size-28 sm:size-32 rounded-full"
-                style={{
-                  background: `conic-gradient(#600020 0 28%, #333 28% 52%, #E8A0C4 52% 74%, #8B4513 74% 100%)`,
-                }}
-                title="Anillo de categoría"
-                aria-label="Gráfico por categoría"
-              />
-              <ul className="min-w-0 list-none text-[11px] space-y-0.5" style={{ color: aion.colors.muted }}>
-                <li><span className="inline-block size-2.5 align-middle rounded" style={{ background: "#600020" }} /> Entradas</li>
-                <li><span className="inline-block size-2.5 align-middle rounded" style={{ background: "#333" }} /> Principales</li>
-                <li><span className="inline-block size-2.5 align-middle rounded" style={{ background: "#E8A0C4" }} /> Pastas</li>
-                <li><span className="inline-block size-2.5 align-middle rounded" style={{ background: "#8B4513" }} /> Carnes</li>
+              <div className="size-28 sm:size-32 rounded-full bg-stone-100 grid place-items-center text-xs text-stone-500">
+                {topCategoryTotal > 0 ? `${topCategoryTotal} uds` : "Sin datos"}
+              </div>
+              <ul
+                className="min-w-0 list-none text-[11px] space-y-0.5"
+                style={{ color: aion.colors.muted }}
+              >
+                {data.categoryDistribution.slice(0, 5).map((item) => {
+                  const pct =
+                    topCategoryTotal > 0
+                      ? Math.round((item.quantity / topCategoryTotal) * 100)
+                      : 0;
+                  return (
+                    <li key={item.category}>
+                      {item.category} - {item.quantity} uds ({pct}%)
+                    </li>
+                  );
+                })}
+                {data.categoryDistribution.length === 0 ? (
+                  <li>Sin datos de categorías</li>
+                ) : null}
               </ul>
             </div>
           </li>
         </div>
-        <div
-          className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-black/5"
-        >
+        <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-black/5">
           <h2
             className="text-sm font-extrabold"
             style={{ color: aion.colors.text }}
-          >Platos más vendidos</h2>
-          <p
-            className="text-xs"
-            style={{ color: aion.colors.muted }}
-          >Top 5 de la semana (demo)</p>
+          >
+            Platos más vendidos
+          </h2>
+          <p className="text-xs" style={{ color: aion.colors.muted }}>
+            Top 5 del mes actual
+          </p>
           <ol className="mt-2 list-none">
-            {top.map((i, idx) => (
+            {data.topDishes.map((i, idx) => (
               <li
-                key={i.name}
+                key={i.id}
                 className="mb-1 flex items-center justify-between border-b border-stone-100 py-1.5 last:border-0"
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -157,7 +187,9 @@ export default function AionAdminDashboardPage() {
                       background: aion.colors.pillInactive,
                       color: aion.colors.primary,
                     }}
-                  >{idx + 1}</span>
+                  >
+                    {idx + 1}
+                  </span>
                   <div
                     className="size-8 rounded-full"
                     style={{
@@ -167,13 +199,30 @@ export default function AionAdminDashboardPage() {
                     aria-label="Miniatura de plato"
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold truncate" style={{ color: aion.colors.text }}>{i.name}</p>
-                    <p className="text-xs" style={{ color: aion.colors.muted }}>{i.n} vendidos</p>
+                    <p
+                      className="text-sm font-bold truncate"
+                      style={{ color: aion.colors.text }}
+                    >
+                      {i.name}
+                    </p>
+                    <p className="text-xs" style={{ color: aion.colors.muted }}>
+                      {i.sold} vendidos
+                    </p>
                   </div>
                 </div>
-                <p className="text-sm font-bold shrink-0" style={{ color: aion.colors.primary }}>{i.rev} ingresos</p>
+                <p
+                  className="text-sm font-bold shrink-0"
+                  style={{ color: aion.colors.primary }}
+                >
+                  {formatCOP(i.revenue)} ingresos
+                </p>
               </li>
             ))}
+            {data.topDishes.length === 0 ? (
+              <li className="py-2 text-sm" style={{ color: aion.colors.muted }}>
+                Aún no hay ventas registradas este mes.
+              </li>
+            ) : null}
           </ol>
         </div>
       </main>
