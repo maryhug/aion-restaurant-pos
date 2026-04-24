@@ -1,79 +1,125 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { SignJWT } from "jose";
 import prisma from "@/lib/prisma";
+import {
+  accessCookieConfig,
+  refreshCookieConfig,
+  signAccessToken,
+  signRefreshToken,
+  type UserRole,
+} from "@/lib/auth/jwt";
+import {
+  isStrongPassword,
+  isValidEmail,
+  isValidName,
+  normalizeEmail,
+} from "@/lib/auth/validators";
+import { mapAuthDbError } from "@/lib/auth/prisma-error";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "default_secret_key_change_me",
-);
+type RegisterBody = {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json();
+    const body = (await req.json()) as RegisterBody;
+    const name = (body.name ?? "").trim();
+    const email = normalizeEmail(body.email ?? "");
+    const password = body.password ?? "";
+    const confirmPassword = body.confirmPassword ?? "";
 
-    // 1. Validar campos
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       return NextResponse.json(
-        { error: "Todos los campos son obligatorios" },
+        { error: "Todos los campos obligatorios deben completarse." },
         { status: 400 },
       );
     }
 
-    // 2. Verificar si el usuario ya existe
-    const existingUser = await prisma.users.findUnique({
-      where: { email },
-    });
+    if (!isValidName(name)) {
+      return NextResponse.json(
+        { error: "El nombre debe tener al menos 2 caracteres." },
+        { status: 400 },
+      );
+    }
 
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: "Email inválido." }, { status: 400 });
+    }
+
+    if (password !== confirmPassword) {
+      return NextResponse.json(
+        { error: "Las contraseñas no coinciden." },
+        { status: 400 },
+      );
+    }
+
+    if (!isStrongPassword(password)) {
+      return NextResponse.json(
+        {
+          error:
+            "La contraseña debe tener mínimo 8 caracteres, una mayúscula, una minúscula y un número.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const existingUser = await prisma.users.findUnique({ where: { email } });
     if (existingUser) {
       return NextResponse.json(
-        { error: "El correo electrónico ya está registrado" },
-        { status: 400 },
+        { error: "El correo electrónico ya está registrado." },
+        { status: 409 },
       );
     }
 
-    // 3. Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const role: UserRole = "customer";
 
-    // 4. Crear usuario en la base de datos
     const user = await prisma.users.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: "customer", // Rol por defecto
+        role,
       },
     });
 
-    // 5. Generar JWT
-    const token = await new SignJWT({
+    const accessToken = await signAccessToken({
       id: user.id,
       email: user.email,
-      role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(JWT_SECRET);
-    // 6. Retornar respuesta exitosa (eliminamos el password manualmente para evitar el warning de variable no usada)
-    const userWithoutPassword = { ...user } as Partial<typeof user>;
-    delete userWithoutPassword.password;
-    return NextResponse.json(
+      role,
+    });
+    const refreshToken = await signRefreshToken({
+      id: user.id,
+      email: user.email,
+      role,
+    });
+
+    const response = NextResponse.json(
       {
-        message: "Usuario registrado con éxito",
-        user: userWithoutPassword,
-        token,
+        message: "Cuenta creada con éxito.",
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        accessToken,
+        refreshToken,
       },
       { status: 201 },
     );
+    response.cookies.set(accessCookieConfig(accessToken));
+    response.cookies.set(refreshCookieConfig(refreshToken));
+    return response;
   } catch (error: unknown) {
     console.error("Error en registro:", error);
-
-    const errorMessage =
-      error instanceof Error ? error.message : "Error desconocido";
-
+    const mapped = mapAuthDbError(error);
     return NextResponse.json(
-      { error: "Error interno del servidor", details: errorMessage },
-      { status: 500 },
+      { error: mapped.error, details: mapped.details },
+      { status: mapped.status },
     );
   }
 }
