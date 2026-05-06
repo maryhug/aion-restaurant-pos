@@ -90,11 +90,13 @@ export async function POST(req: NextRequest) {
       id: user.id,
       email: user.email,
       role,
+      restaurantId: null,
     });
     const refreshToken = await signRefreshToken({
       id: user.id,
       email: user.email,
       role,
+      restaurantId: null,
     });
 
     const response = NextResponse.json(
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest) {
           name: user.name,
           email: user.email,
           role: user.role,
+          restaurantId: null,
         },
         accessToken,
         refreshToken,

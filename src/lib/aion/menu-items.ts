@@ -1,7 +1,6 @@
 import type { Database } from "@/types/database";
 import { supabase } from "@/lib/db/supabase";
 import type { AionDish } from "@/lib/aion/types";
-import { aionDishes } from "@/data/aion-dishes";
 
 type MenuItemRow = Database["public"]["Tables"]["menu_items"]["Row"];
 
@@ -51,13 +50,11 @@ export async function fetchAionMenuDishes(options?: {
     ? await query
     : await query.eq("available", true);
 
-  if (error || !data || data.length === 0) {
-    return includeUnavailable
-      ? aionDishes
-      : aionDishes.filter((dish) => dish.available);
+  if (error) {
+    throw new Error(`Error al consultar menú: ${error.message}`);
   }
 
-  return data.map(fromRow);
+  return (data ?? []).map(fromRow);
 }
 
 export async function fetchAionDishById(id: string): Promise<AionDish | null> {
@@ -71,5 +68,9 @@ export async function fetchAionDishById(id: string): Promise<AionDish | null> {
     return fromRow(data);
   }
 
-  return aionDishes.find((dish) => dish.id === id) ?? null;
+  if (error) {
+    throw new Error(`Error al consultar plato: ${error.message}`);
+  }
+
+  return null;
 }

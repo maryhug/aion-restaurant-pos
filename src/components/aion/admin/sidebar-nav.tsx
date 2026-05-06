@@ -3,17 +3,24 @@ import { aion } from "@/lib/aion/tokens";
 import { AionLogoutButton } from "@/components/aion/auth/logout-button";
 
 type Item = { href: string; label: string; icon: "grid" | "menu" | "line" };
-type Props = { current: "dashboard" | "menu" };
+type Props = { current: "dashboard" | "menu" | "gastos" };
 
 const items: Item[] = [
   { href: "/aion/admin", label: "Dashboard", icon: "grid" },
   { href: "/aion/admin/menu", label: "Gestión menú", icon: "menu" },
+  { href: "/aion/admin/gastos", label: "Gastos", icon: "line" },
 ];
 
 function Ico({ t }: { t: Item["icon"] }) {
   if (t === "grid")
     return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden
+      >
         <rect x="3" y="3" width="7" height="7" rx="1" />
         <rect x="14" y="3" width="7" height="7" rx="1" />
         <rect x="3" y="14" width="7" height="7" rx="1" />
@@ -73,7 +80,8 @@ export function AionAdminSidebar({ current }: Props) {
         {items.map((it) => {
           const act =
             (it.href === "/aion/admin" && current === "dashboard") ||
-            (it.href === "/aion/admin/menu" && current === "menu");
+            (it.href === "/aion/admin/menu" && current === "menu") ||
+            (it.href === "/aion/admin/gastos" && current === "gastos");
           return (
             <Link
               key={it.href}
@@ -81,7 +89,10 @@ export function AionAdminSidebar({ current }: Props) {
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium"
               style={
                 act
-                  ? { background: aion.colors.primary, color: aion.colors.white }
+                  ? {
+                      background: aion.colors.primary,
+                      color: aion.colors.white,
+                    }
                   : { color: aion.colors.text }
               }
             >
@@ -99,7 +110,14 @@ export function AionAdminSidebar({ current }: Props) {
         href="/aion"
       >
         <span className="grid size-4 place-items-center" aria-hidden>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
             <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-9.5Z" />
           </svg>
         </span>

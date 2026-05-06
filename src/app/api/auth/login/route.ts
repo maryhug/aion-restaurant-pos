@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth/jwt";
 import { isValidEmail, normalizeEmail } from "@/lib/auth/validators";
 import { mapAuthDbError } from "@/lib/auth/prisma-error";
+import { supabaseRaw } from "@/lib/db/supabase";
 
 type LoginBody = {
   email?: string;
@@ -51,15 +52,33 @@ export async function POST(req: NextRequest) {
     }
 
     const role = user.role as UserRole;
+    let restaurantId: string | null = null;
+
+    // Intentamos resolver tenant por membresía del usuario.
+    try {
+      const { data: memberships } = (await supabaseRaw
+        .from("user_restaurants")
+        .select("restaurant_id")
+        .eq("user_id", user.id)
+        .limit(1)) as {
+        data: Array<{ restaurant_id: string }> | null;
+      };
+      restaurantId = memberships?.[0]?.restaurant_id ?? null;
+    } catch {
+      restaurantId = null;
+    }
+
     const accessToken = await signAccessToken({
       id: user.id,
       email: user.email,
       role,
+      restaurantId,
     });
     const refreshToken = await signRefreshToken({
       id: user.id,
       email: user.email,
       role,
+      restaurantId,
     });
 
     const response = NextResponse.json(
@@ -70,6 +89,7 @@ export async function POST(req: NextRequest) {
           name: user.name,
           email: user.email,
           role: user.role,
+          restaurantId,
         },
         accessToken,
         refreshToken,

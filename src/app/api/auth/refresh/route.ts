@@ -28,11 +28,13 @@ export async function POST(req: NextRequest) {
       id: payload.id,
       email: payload.email,
       role: payload.role,
+      restaurantId: payload.restaurantId,
     });
     const nextRefreshToken = await signRefreshToken({
       id: payload.id,
       email: payload.email,
       role: payload.role,
+      restaurantId: payload.restaurantId,
     });
 
     const response = NextResponse.json(
