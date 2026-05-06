@@ -31,6 +31,14 @@ export interface Restaurant {
   created_at: string;
 }
 
+export interface UserRestaurant {
+  id: string;
+  user_id: string;
+  restaurant_id: string;
+  role: "admin" | "staff";
+  created_at: string;
+}
+
 export interface Table {
   id: string;
   restaurant_id: string;
@@ -106,6 +114,11 @@ export type Database = {
         Row: Restaurant;
         Insert: Omit<Restaurant, "id" | "created_at">;
         Update: Partial<Omit<Restaurant, "id" | "created_at">>;
+      };
+      user_restaurants: {
+        Row: UserRestaurant;
+        Insert: Omit<UserRestaurant, "id" | "created_at">;
+        Update: Partial<Omit<UserRestaurant, "id" | "created_at">>;
       };
       tables: {
         Row: Table;

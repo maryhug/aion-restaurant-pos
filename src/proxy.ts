@@ -60,6 +60,7 @@ export async function proxy(req: NextRequest) {
       id: payload.id,
       email: payload.email,
       role: payload.role,
+      restaurantId: payload.restaurantId,
     });
 
     const response = NextResponse.next();

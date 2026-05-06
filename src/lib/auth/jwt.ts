@@ -7,6 +7,7 @@ export interface AuthJwtPayload extends JWTPayload {
   id: string;
   email: string;
   role: UserRole;
+  restaurantId: string | null;
 }
 
 const ACCESS_TOKEN_SECRET = process.env.JWT_SECRET;
@@ -31,7 +32,9 @@ function refreshSecretKey(): Uint8Array {
   return new TextEncoder().encode(REFRESH_TOKEN_SECRET);
 }
 
-export async function signAccessToken(payload: AuthJwtPayload): Promise<string> {
+export async function signAccessToken(
+  payload: AuthJwtPayload,
+): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -40,7 +43,7 @@ export async function signAccessToken(payload: AuthJwtPayload): Promise<string> 
 }
 
 export async function signRefreshToken(
-  payload: Pick<AuthJwtPayload, "id" | "email" | "role">,
+  payload: Pick<AuthJwtPayload, "id" | "email" | "role" | "restaurantId">,
 ): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
@@ -49,7 +52,9 @@ export async function signRefreshToken(
     .sign(refreshSecretKey());
 }
 
-export async function verifyAccessToken(token: string): Promise<AuthJwtPayload> {
+export async function verifyAccessToken(
+  token: string,
+): Promise<AuthJwtPayload> {
   const verified = await jwtVerify<AuthJwtPayload>(token, accessSecretKey());
   return verified.payload;
 }
