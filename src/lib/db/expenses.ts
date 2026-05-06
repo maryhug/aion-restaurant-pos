@@ -107,8 +107,7 @@ export async function getMonthlyProfit(
   profit: number;
 }> {
   const from = `${year}-${String(month).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const to = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
+  const toExclusive = `${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`;
 
   type SaleRow = { total: number };
   type ExpenseRow = { amount: number };
@@ -124,7 +123,7 @@ export async function getMonthlyProfit(
     .select("total")
     .eq("restaurant_id", restaurantId)
     .gte("created_at", from)
-    .lte("created_at", to)) as {
+    .lt("created_at", toExclusive)) as {
     data: SaleRow[] | null;
     error: { message: string } | null;
   };
@@ -139,7 +138,7 @@ export async function getMonthlyProfit(
     .select("amount")
     .eq("restaurant_id", restaurantId)
     .gte("date", from)
-    .lte("date", to)) as {
+    .lt("date", toExclusive)) as {
     data: ExpenseRow[] | null;
     error: { message: string } | null;
   };
@@ -151,9 +150,10 @@ export async function getMonthlyProfit(
   // 🔹 1. Obtener órdenes del mes
   const { data: orders, error: ordersError } = (await supabase
     .from("orders")
-    .select("id")
+    .select("id, tables!inner(restaurant_id)")
+    .eq("tables.restaurant_id", restaurantId)
     .gte("created_at", from)
-    .lte("created_at", to)) as {
+    .lt("created_at", toExclusive)) as {
     data: OrderRow[] | null;
     error: { message: string } | null;
   };
@@ -163,6 +163,24 @@ export async function getMonthlyProfit(
   }
 
   const orderIds = (orders ?? []).map((o) => o.id);
+
+  if (orderIds.length === 0) {
+    const totalSales = (sales ?? []).reduce(
+      (sum, s) => sum + Number(s.total),
+      0,
+    );
+    const totalExpenses = (expenses ?? []).reduce(
+      (sum, e) => sum + Number(e.amount),
+      0,
+    );
+
+    return {
+      totalSales,
+      totalCosts: 0,
+      totalExpenses,
+      profit: totalSales - totalExpenses,
+    };
+  }
 
   // 🔹 2. Obtener items de esas órdenes
   const { data: orderItems, error: itemsError } = (await supabase
