@@ -33,8 +33,7 @@ const MONTHS = [
   "Diciembre",
 ];
 
-// ⚠️ Reemplaza con el UUID real de tu restaurante en Supabase
-const RESTAURANT_ID = "pon-aqui-el-uuid-del-restaurante";
+const RESTAURANT_ID = process.env.NEXT_PUBLIC_DEFAULT_RESTAURANT_ID ?? "";
 
 export default function GastosPage() {
   const now = new Date();
@@ -62,6 +61,13 @@ export default function GastosPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
+    if (!RESTAURANT_ID) {
+      setSubmitError(
+        "Falta NEXT_PUBLIC_DEFAULT_RESTAURANT_ID en variables de entorno.",
+      );
+      return;
+    }
+
     setLoading(true);
     setSubmitError(null);
 
@@ -99,6 +105,13 @@ export default function GastosPage() {
     e.preventDefault();
     setSubmitError(null);
     setSuccessMessage(null);
+
+    if (!RESTAURANT_ID) {
+      setSubmitError(
+        "Falta NEXT_PUBLIC_DEFAULT_RESTAURANT_ID en variables de entorno.",
+      );
+      return;
+    }
 
     try {
       await createExpense(form, RESTAURANT_ID);
