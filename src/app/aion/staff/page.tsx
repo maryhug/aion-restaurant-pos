@@ -1,362 +1,399 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { aion } from "@/lib/aion/tokens";
-import type { AionStaffOrder, OrderState } from "@/lib/aion/types";
-import { AionLogoutButton } from "@/components/aion/auth/logout-button";
+import type { OrderStatus } from "@/types/database";
+import { useLanguage } from "@/lib/aion/language-context";
 
-function setOfState(list: AionStaffOrder[], s: OrderState) {
-  return list.filter((o) => o.state === s);
+type StaffOrder = {
+  id: string;
+  status: OrderStatus;
+  code: string;
+  customerName: string;
+  table: string;
+  createdAt: string;
+  isNew: boolean;
+  urgent: boolean;
+  items: { id: string; name: string; quantity: number }[];
+};
+
+function minutesAgo(createdAt: string) {
+  return Math.max(
+    0,
+    Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000),
+  );
 }
 
-function nowLabel() {
-  return new Date().toLocaleString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const demoNames = [
+  "María García",
+  "Carlos López",
+  "Ana Martínez",
+  "Sofía Ramírez",
+  "David Torres",
+  "Laura Gómez",
+];
 
 export default function AionStaffDashboardPage() {
-  const [orders, setOrders] = useState<AionStaffOrder[]>([]);
+  const { t } = useLanguage();
+  const [orders, setOrders] = useState<StaffOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeLabel, setTimeLabel] = useState(nowLabel());
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<OrderStatus | null>(null);
+  const [nowLabel, setNowLabel] = useState("");
+
+  useEffect(() => {
+    setNowLabel(
+      new Date().toLocaleString("es-CO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    );
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch("/api/staff/orders");
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        throw new Error(data.error ?? "Error al cargar pedidos");
+        throw new Error(data.error ?? "Failed loading orders");
       }
-      const data = (await res.json()) as { orders: AionStaffOrder[] };
-      setOrders(data.orders);
+      const data = (await res.json()) as {
+        orders: {
+          id: string;
+          state: "pendiente" | "preparando" | "listo";
+          tableLabel: string;
+          waitLabel: string;
+          urgent?: boolean;
+          items: { dishId: string; name: string; quantity: number }[];
+        }[];
+      };
+
+      const mapped: StaffOrder[] = data.orders.map((o, idx) => {
+        const statusMap: Record<typeof o.state, OrderStatus> = {
+          pendiente: "pending",
+          preparando: "preparing",
+          listo: "ready",
+        };
+        const elapsedMin = Number(o.waitLabel.replace(/\D/g, "")) || 0;
+        return {
+          id: o.id,
+          code: `ORD-${String(idx + 1).padStart(3, "0")}`,
+          customerName: demoNames[idx % demoNames.length],
+          status: statusMap[o.state],
+          table: o.tableLabel,
+          createdAt: new Date(Date.now() - elapsedMin * 60000).toISOString(),
+          isNew: statusMap[o.state] === "pending" && elapsedMin < 2,
+          urgent: Boolean(o.urgent),
+          items: o.items.map((item) => ({
+            id: item.dishId,
+            name: item.name,
+            quantity: item.quantity,
+          })),
+        };
+      });
+
+      setOrders(mapped);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error de red");
+      setError(err instanceof Error ? err.message : "Network error");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Carga inicial + polling cada 15 s
   useEffect(() => {
     void fetchOrders();
-    const interval = setInterval(() => {
-      void fetchOrders();
-      setTimeLabel(nowLabel());
-    }, 15000);
+    const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  async function advance(id: string) {
-    // Actualización optimista
+  async function moveOrder(id: string, target: OrderStatus) {
+    const current = orders.find((o) => o.id === id);
+    if (!current || current.status === target) return;
+
+    const previous = orders;
     setOrders((list) =>
-      list.map((o) => {
-        if (o.id !== id) return o;
-        if (o.state === "pendiente")
-          return { ...o, state: "preparando" as const, urgent: false };
-        if (o.state === "preparando") return { ...o, state: "listo" as const };
-        return o;
-      }),
+      list.map((o) =>
+        o.id === id ? { ...o, status: target, isNew: false } : o,
+      ),
     );
 
     try {
-      const res = await fetch(`/api/staff/orders/${id}`, { method: "PATCH" });
+      const res = await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: target }),
+      });
       if (!res.ok) {
-        // Revert on error
-        void fetchOrders();
-      } else if (orders.find((o) => o.id === id)?.state === "listo") {
-        // Orden entregada → quitar del board
+        setOrders(previous);
+      } else if (target === "delivered") {
         setOrders((list) => list.filter((o) => o.id !== id));
       }
     } catch {
-      void fetchOrders();
+      setOrders(previous);
     }
   }
 
-  const p = setOfState(orders, "pendiente").length;
-  const pr = setOfState(orders, "preparando").length;
-  const l = setOfState(orders, "listo").length;
-  const u = orders.filter((o) => o.urgent).length;
+  const pending = orders.filter((o) => o.status === "pending");
+  const preparing = orders.filter((o) => o.status === "preparing");
+  const ready = orders.filter((o) => o.status === "ready");
+  const urgentCount = orders.filter((o) => o.urgent).length;
 
   return (
-    <div className="min-h-dvh" style={{ background: aion.colors.staffBg }}>
-      <header className="border-b border-stone-200/80 bg-white px-4 py-2">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2">
-          <p
-            className="text-sm font-extrabold"
-            style={{ color: aion.colors.primaryAlt }}
+    <div className="mx-auto max-w-[1320px] p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-black/5">
+        <p
+          className="flex items-center gap-2 text-base font-extrabold"
+          style={{ color: aion.colors.primary }}
+        >
+          <span
+            className="grid size-8 place-items-center rounded-xl text-white"
+            style={{ background: aion.colors.primary }}
           >
-            AION Staff
-          </p>
-          <nav
-            className="flex items-center gap-2 text-xs font-medium sm:gap-4"
+            ⌂
+          </span>
+          AION <span className="font-medium text-stone-500">staff</span>
+        </p>
+        <nav className="flex items-center gap-5 text-xs font-semibold text-stone-600">
+          <span>◻ Dashboard</span>
+          <span>◫ Pedidos</span>
+          <span>⌂ Inicio</span>
+        </nav>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3 rounded-2xl px-1 py-2">
+        <div>
+          <h1
+            className="text-4xl font-black"
+            style={{
+              color: aion.colors.text,
+              fontSize: "clamp(1.8rem,3vw,2.2rem)",
+            }}
+          >
+            Dashboard de Pedidos
+          </h1>
+          <p
+            className="text-sm capitalize"
             style={{ color: aion.colors.muted }}
           >
-            <span className="hidden sm:inline" aria-current="page">
-              Dashboard
-            </span>
-            <Link
-              className="rounded-lg border border-stone-200/80 px-2 py-1"
-              style={{ color: aion.colors.text }}
-              href="/aion"
-            >
-              Inicio
-            </Link>
-            <AionLogoutButton
-              className="rounded-lg border border-stone-200/80 px-2 py-1 disabled:opacity-70"
-              style={{ color: aion.colors.danger }}
-              label="Salir"
-            />
-          </nav>
+            {nowLabel || " "}
+          </p>
         </div>
-      </header>
+        <button
+          type="button"
+          onClick={() => void fetchOrders()}
+          className="rounded-xl px-4 py-2 text-sm font-bold text-white"
+          style={{ background: aion.colors.primary }}
+        >
+          Ver todos los pedidos
+        </button>
+      </div>
 
-      <div className="mx-auto max-w-6xl p-3 sm:p-4">
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1
-              className="text-lg font-extrabold"
-              style={{ color: aion.colors.text }}
-            >
-              Dashboard de pedidos
-            </h1>
-            <p
-              className="text-sm capitalize"
-              style={{ color: aion.colors.muted }}
-            >
-              {timeLabel}
-            </p>
-          </div>
+      <ul className="mb-4 grid list-none grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard emoji="🕐" value={pending.length} label={t("pending")} />
+        <KpiCard emoji="📦" value={preparing.length} label={t("preparing")} />
+        <KpiCard emoji="✅" value={ready.length} label={t("ready")} />
+        <KpiCard emoji="⚠️" value={urgentCount} label={t("urgents")} danger />
+      </ul>
+
+      {error && (
+        <p className="mb-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+          {error} —{" "}
           <button
             type="button"
             onClick={() => void fetchOrders()}
-            className="shrink-0 rounded-2xl px-3 py-1.5 text-sm font-bold text-white"
-            style={{ background: aion.colors.primaryAlt }}
+            className="font-bold underline"
           >
-            Actualizar
+            {t("retry")}
           </button>
+        </p>
+      )}
+
+      {loading ? (
+        <p
+          className="mt-10 text-center text-sm"
+          style={{ color: aion.colors.muted }}
+        >
+          Loading...
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <Column
+            title={`${t("pending")} (${pending.length})`}
+            status="pending"
+            list={pending}
+            draggingId={draggingId}
+            dropTarget={dropTarget}
+            onDragStart={setDraggingId}
+            onDropToStatus={moveOrder}
+            setDropTarget={setDropTarget}
+            actionLabel={t("toPreparing")}
+          />
+          <Column
+            title={`${t("preparing")} (${preparing.length})`}
+            status="preparing"
+            list={preparing}
+            draggingId={draggingId}
+            dropTarget={dropTarget}
+            onDragStart={setDraggingId}
+            onDropToStatus={moveOrder}
+            setDropTarget={setDropTarget}
+            actionLabel={t("toReady")}
+          />
+          <Column
+            title={`${t("ready")} (${ready.length})`}
+            status="ready"
+            list={ready}
+            draggingId={draggingId}
+            dropTarget={dropTarget}
+            onDragStart={setDraggingId}
+            onDropToStatus={moveOrder}
+            setDropTarget={setDropTarget}
+            actionLabel={t("toDelivered")}
+          />
         </div>
-
-        {/* KPIs */}
-        <ul className="mb-3 grid list-none grid-cols-2 gap-2 sm:grid-cols-4">
-          <li className="flex items-center gap-2 rounded-2xl border border-amber-100/80 bg-white p-2 text-sm">
-            <span
-              className="grid size-7 place-items-center rounded-lg"
-              style={{ color: aion.colors.warning, background: "#FEF3C7" }}
-            >
-              🕐
-            </span>
-            <div>
-              <p className="text-xs" style={{ color: aion.colors.muted }}>
-                Pendientes
-              </p>
-              <p className="text-lg font-bold">{p}</p>
-            </div>
-          </li>
-          <li className="flex items-center gap-2 rounded-2xl border border-blue-100/80 bg-white p-2 text-sm">
-            <span className="grid size-7 place-items-center rounded-lg bg-blue-100 text-lg">
-              👨‍🍳
-            </span>
-            <div>
-              <p className="text-xs" style={{ color: aion.colors.muted }}>
-                Preparando
-              </p>
-              <p className="text-lg font-bold">{pr}</p>
-            </div>
-          </li>
-          <li className="flex items-center gap-2 rounded-2xl border border-emerald-100/80 bg-white p-2 text-sm">
-            <span
-              className="grid size-7 place-items-center rounded-lg bg-emerald-100 text-sm font-bold"
-              style={{ color: aion.colors.success }}
-            >
-              ✓
-            </span>
-            <div>
-              <p className="text-xs" style={{ color: aion.colors.muted }}>
-                Listos
-              </p>
-              <p className="text-lg font-bold">{l}</p>
-            </div>
-          </li>
-          <li
-            className="flex items-center gap-2 rounded-2xl p-2 text-sm"
-            style={{
-              border: `1px solid ${aion.colors.danger}55`,
-              background: "#FEF2F2",
-            }}
-          >
-            <span className="text-lg" style={{ color: aion.colors.danger }}>
-              ⚠
-            </span>
-            <div>
-              <p className="text-xs" style={{ color: aion.colors.muted }}>
-                Urgentes
-              </p>
-              <p
-                className="text-lg font-bold"
-                style={{ color: aion.colors.danger }}
-              >
-                {u}
-              </p>
-            </div>
-          </li>
-        </ul>
-
-        {error && (
-          <p className="mb-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-            {error} —{" "}
-            <button
-              type="button"
-              onClick={() => void fetchOrders()}
-              className="font-bold underline"
-            >
-              Reintentar
-            </button>
-          </p>
-        )}
-
-        {loading ? (
-          <p
-            className="mt-10 text-center text-sm"
-            style={{ color: aion.colors.muted }}
-          >
-            Cargando pedidos…
-          </p>
-        ) : (
-          <div
-            className="grid items-start gap-2 sm:grid-cols-3"
-            style={{ minHeight: "50vh" }}
-          >
-            <AionCol
-              title="Pendientes"
-              count={p}
-              dotColor={aion.colors.warning}
-              list={setOfState(orders, "pendiente")}
-              actionLabel="Iniciar"
-              onAction={advance}
-            />
-            <AionCol
-              title="Preparando"
-              count={pr}
-              dotColor={aion.colors.info}
-              list={setOfState(orders, "preparando")}
-              actionLabel="Listo"
-              onAction={advance}
-              primaryCta
-            />
-            <AionCol
-              title="Listos"
-              count={l}
-              dotColor={aion.colors.success}
-              list={setOfState(orders, "listo")}
-              actionLabel="Entregar"
-              onAction={advance}
-              deliver
-            />
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
-type Col = {
+type ColProps = {
   title: string;
-  count: number;
-  dotColor: string;
-  list: AionStaffOrder[];
+  status: OrderStatus;
+  list: StaffOrder[];
+  draggingId: string | null;
+  dropTarget: OrderStatus | null;
+  onDragStart: (id: string | null) => void;
+  onDropToStatus: (id: string, status: OrderStatus) => void;
+  setDropTarget: (status: OrderStatus | null) => void;
   actionLabel: string;
-  onAction: (id: string) => void;
-  primaryCta?: boolean;
-  deliver?: boolean;
 };
 
-function AionCol({
+function Column({
   title,
-  count,
-  dotColor,
+  status,
   list,
-  onAction,
-  primaryCta = false,
-  deliver = false,
-}: Col) {
+  draggingId,
+  dropTarget,
+  onDragStart,
+  onDropToStatus,
+  setDropTarget,
+  actionLabel,
+}: ColProps) {
+  const { t } = useLanguage();
   return (
     <section
-      className="rounded-2xl bg-white/90 p-2"
-      style={{ minHeight: "200px" }}
+      className="w-full rounded-3xl bg-[#ece9e3] p-2 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDropTarget(status);
+      }}
+      onDragLeave={() => setDropTarget(null)}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (draggingId) onDropToStatus(draggingId, status);
+        onDragStart(null);
+        setDropTarget(null);
+      }}
+      style={
+        dropTarget === status && draggingId
+          ? { boxShadow: `0 0 0 2px ${aion.colors.primary}55` }
+          : undefined
+      }
     >
       <h2
-        className="mb-2 flex items-center gap-2 text-sm font-bold"
+        className="mb-2 px-1 text-lg font-extrabold"
         style={{ color: aion.colors.text }}
       >
         <span
-          className="inline-block size-2.5 rounded-full"
-          style={{ background: dotColor }}
+          className="mr-1.5 inline-block size-2.5 rounded-full"
+          style={{
+            background:
+              status === "pending"
+                ? "#eab308"
+                : status === "preparing"
+                  ? "#3b82f6"
+                  : "#22c55e",
+          }}
         />
-        {title} ({count})
+        {title}
       </h2>
       <ul className="flex list-none flex-col gap-2">
-        {list.map((o) => (
+        {list.map((order) => (
           <li
-            key={o.id}
-            className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-2.5"
+            key={order.id}
+            draggable
+            onDragStart={() => onDragStart(order.id)}
+            onDragEnd={() => {
+              onDragStart(null);
+              setDropTarget(null);
+            }}
+            className="rounded-2xl border border-stone-200/70 bg-white p-3 shadow-sm transition-all duration-300 ease-in-out"
+            style={
+              status === "preparing"
+                ? { borderColor: `${aion.colors.danger}66` }
+                : undefined
+            }
           >
             <div className="flex items-start justify-between text-xs">
-              <span
-                className="font-mono text-[11px] font-bold"
-                style={{ color: aion.colors.text }}
-              >
-                {o.id.slice(0, 8).toUpperCase()}
-                {o.urgent && o.state === "preparando" ? (
-                  <span className="ml-1.5 inline rounded bg-red-500 px-1.5 text-[9px] font-extrabold text-white">
-                    URGENTE
-                  </span>
-                ) : null}
+              <span className="font-mono text-[11px] font-bold">
+                {order.code}
               </span>
-              <span style={{ color: aion.colors.muted }}>{o.tableLabel}</span>
+              <span
+                className="font-semibold"
+                style={{ color: aion.colors.muted }}
+              >
+                {order.table}
+              </span>
             </div>
+            <p className="mt-1 text-base font-bold text-stone-800">
+              {order.customerName}
+            </p>
+            {order.isNew || order.urgent ? (
+              <span className="mt-1 inline-block rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold text-rose-700">
+                URGENTE
+              </span>
+            ) : null}
             <p
-              className="text-right text-[11px] font-bold"
-              style={{ color: aion.colors.danger }}
+              className="mt-1 text-right text-[11px] font-semibold"
+              style={{ color: aion.colors.muted }}
             >
-              {o.waitLabel}
+              Llega en {minutesAgo(order.createdAt)}m
             </p>
             <ul
               className="mt-1 list-inside list-disc text-xs"
               style={{ color: aion.colors.muted }}
             >
-              {o.items.map((i) => (
-                <li key={i.dishId + o.id}>
-                  {i.quantity}× {i.name}
+              {order.items.map((item) => (
+                <li key={`${item.id}-${order.id}`}>
+                  {item.quantity}x {item.name}
                 </li>
               ))}
             </ul>
             <button
               type="button"
-              className="mt-2 w-full rounded-xl py-1.5 text-sm font-bold"
-              onClick={() => onAction(o.id)}
+              className="mt-2 w-full rounded-xl py-2 text-sm font-bold transition-all duration-300 ease-in-out"
+              onClick={() =>
+                onDropToStatus(
+                  order.id,
+                  status === "pending"
+                    ? "preparing"
+                    : status === "preparing"
+                      ? "ready"
+                      : "delivered",
+                )
+              }
               style={
-                primaryCta && o.state === "preparando"
+                status === "preparing"
                   ? { background: aion.colors.primary, color: "#fff" }
-                  : {
-                      background: aion.colors.pillInactive,
-                      color: aion.colors.text,
-                    }
+                  : { background: "#ecebe8", color: aion.colors.text }
               }
             >
-              {deliver
-                ? "Entregar"
-                : o.state === "pendiente"
-                  ? "Iniciar"
-                  : o.state === "preparando"
-                    ? "Listo"
-                    : "Entregado"}
+              {actionLabel}
             </button>
           </li>
         ))}
@@ -365,10 +402,59 @@ function AionCol({
             className="p-2 text-center text-sm"
             style={{ color: aion.colors.muted }}
           >
-            Nada en esta cola
+            {t("noOrders")}
           </li>
         ) : null}
       </ul>
     </section>
+  );
+}
+
+function KpiCard({
+  emoji,
+  value,
+  label,
+  danger = false,
+}: {
+  emoji: string;
+  value: number;
+  label: string;
+  danger?: boolean;
+}) {
+  return (
+    <li
+      className="rounded-2xl bg-white px-4 py-5 shadow-sm ring-1 ring-black/5"
+      style={
+        danger
+          ? {
+              border: `1px solid ${aion.colors.danger}66`,
+              background: "#fef3f3",
+            }
+          : undefined
+      }
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className="grid size-8 place-items-center rounded-xl text-base"
+          style={{ background: danger ? "#FDE2E2" : "#F0EEEA" }}
+        >
+          {emoji}
+        </span>
+        <div>
+          <p
+            className="text-3xl font-black leading-none"
+            style={{ color: aion.colors.text }}
+          >
+            {value}
+          </p>
+          <p
+            className="text-sm font-semibold"
+            style={{ color: aion.colors.muted }}
+          >
+            {label}
+          </p>
+        </div>
+      </div>
+    </li>
   );
 }
