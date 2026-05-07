@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import type { OrderStatus } from "@/types/database";
 
 // POST /api/orders — crea una orden desde una preorden del cliente (guest-friendly)
 export async function POST(req: NextRequest) {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     const order = await prisma.orders.create({
       data: {
         table_id: tableId ?? null,
-        status: "pending",
+        status: "pending" satisfies OrderStatus,
         total,
         order_items: {
           create: dbItems.map((dbItem) => {

@@ -1,0 +1,85 @@
+categoria,producto,filename
+Smoothies,Mango naranja,01_smoothies_mango-naranja.png
+Smoothies,Fresa naranja limón,02_smoothies_fresa-naranja-limon.png
+Smoothies,Fresa naranja banano,03_smoothies_fresa-naranja-banano.png
+Smoothies,Piña naranja mora,04_smoothies_pina-naranja-mora.png
+Smoothies,Piña naranja banano,05_smoothies_pina-naranja-banano.png
+Cervezas,BBC,06_cervezas_bbc.png
+Cervezas,3 Cordilleras,07_cervezas_3-cordilleras.png
+Cervezas,Club Colombia,08_cervezas_club-colombia.png
+Cervezas,Corona,09_cervezas_corona.png
+Cervezas,Stella,10_cervezas_stella.png
+Cócteles,Colimocho,11_cocteles_colimocho.png
+Cócteles,Tinto de verano,12_cocteles_tinto-de-verano.png
+Cócteles,Mojito,13_cocteles_mojito.png
+Cócteles,Cuba libre,14_cocteles_cuba-libre.png
+Cócteles,Muller,15_cocteles_muller.png
+Cócteles,Margarita,16_cocteles_margarita.png
+Sangría,Copa sangría,17_sangria_copa-sangria.png
+Sangría,Jarra x2,18_sangria_jarra-x2.png
+Sangría,Jarra x5,19_sangria_jarra-x5.png
+Vino,Vino casa,20_vino_vino-casa.png
+Vino,Vino rosado,21_vino_vino-rosado.png
+Vino,Vino blanco,22_vino_vino-blanco.png
+Vino,Merlot,23_vino_merlot.png
+Entradas,Maíz sencillo,24_entradas_maiz-sencillo.png
+Entradas,Maíz especial,25_entradas_maiz-especial.png
+Entradas,Nachos,26_entradas_nachos.png
+Entradas,Cazuela pequeña,27_entradas_cazuela-pequena.png
+Entradas,Cazuela grande,28_entradas_cazuela-grande.png
+Entradas,Tabla de queso,29_entradas_tabla-de-queso.png
+Entradas,Combinado ibérico,30_entradas_combinado-iberico.png
+Cafés,Expreso,31_cafes_expreso.png
+Cafés,Americano,32_cafes_americano.png
+Cafés,Capuchino,33_cafes_capuchino.png
+Cafés,Moka caliente,34_cafes_moka-caliente.png
+Cafés,Carajillo amaretto,35_cafes_carajillo-amaretto.png
+Cafés,Carajillo whisky,36_cafes_carajillo-whisky.png
+Cafés,Carajillo vino,37_cafes_carajillo-vino.png
+Cafés,Carajillo coñac,38_cafes_carajillo-conac.png
+Cafés,Carajillo ron,39_cafes_carajillo-ron.png
+Cafés,Latte macchiato,40_cafes_latte-macchiato.png
+Cafés,Irlandés,41_cafes_irlandes.png
+Cafés,Café helado,42_cafes_cafe-helado.png
+Cafés,Moka frío,43_cafes_moka-frio.png
+Cafés,Frapuchino,44_cafes_frapuchino.png
+Cafés,Aromática tradicional,45_cafes_aromatica-tradicional.png
+Cafés,Aromática frutos rojos,46_cafes_aromatica-frutos-rojos.png
+Cafés,Té chai,47_cafes_te-chai.png
+Postres,Brownie,48_postres_brownie.png
+Postres,Fresas chantilli,49_postres_fresas-chantilli.png
+Sándwiches,Ibérico,50_sandwiches_iberico.png
+Sándwiches,IL Cafeto Mixto,51_sandwiches_il-cafeto-mixto.png
+Sándwiches,Tradicional,52_sandwiches_tradicional.png
+Sándwiches,Hawaiano,53_sandwiches_hawaiano.png
+Sándwiches,Pollo,54_sandwiches_pollo.png
+Sándwiches,Pollo desmechado,55_sandwiches_pollo-desmechado.png
+Sándwiches,Carne desmechada,56_sandwiches_carne-desmechada.png
+Sándwiches,Bacon,57_sandwiches_bacon.png
+Sándwiches,Vegetariano,58_sandwiches_vegetariano.png
+Sándwiches,Atún,59_sandwiches_atun.png
+Sándwiches,Cerdo,60_sandwiches_cerdo.png
+Carnes,Brocheta de cerdo,61_carnes_brocheta-de-cerdo.png
+Carnes,Pechuga gratinada,62_carnes_pechuga-gratinada.png
+Carnes,Cañón,63_carnes_canon.png
+Carnes,Milanesa,64_carnes_milanesa.png
+Carnes,Solomito,65_carnes_solomito.png
+Carnes,Salmón,66_carnes_salmon.png
+Ensaladas,Ensalada en bowl,67_ensaladas_ensalada-en-bowl.png
+Adiciones,Adición queso,68_adiciones_adicion-queso.png
+Adiciones,Champiñones,69_adiciones_champinones.png
+Adiciones,Tocineta,70_adiciones_tocineta.png
+Bebidas,Limonada natural,71_bebidas_limonada-natural.png
+Bebidas,Limonada lychee,72_bebidas_limonada-lychee.png
+Bebidas,Coco,73_bebidas_coco.png
+Bebidas,Cereza,74_bebidas_cereza.png
+Bebidas,Hierbabuena,75_bebidas_hierbabuena.png
+Bebidas,Piña hierbabuena,76_bebidas_pina-hierbabuena.png
+Bebidas,Jugo agua,77_bebidas_jugo-agua.png
+Bebidas,Jugo leche,78_bebidas_jugo-leche.png
+Bebidas,Avena,79_bebidas_avena.png
+Bebidas,Milo frío,80_bebidas_milo-frio.png
+Bebidas,Botella agua,81_bebidas_botella-agua.png
+Bebidas,Soda michelada,82_bebidas_soda-michelada.png
+Bebidas,Soda saborizada,83_bebidas_soda-saborizada.png
+Bebidas,Batido de proteína,84_bebidas_batido-de-proteina.png

@@ -48,80 +48,87 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
       className="pb-8"
       style={{ background: aion.colors.pageBg, minHeight: "100dvh" }}
     >
-      <header className="flex items-center justify-between px-4 py-3">
-        <Link
-          href="/aion"
-          className="text-base font-extrabold tracking-wide"
+      <div className="mx-auto max-w-xl px-4">
+        <header className="flex items-center justify-between pt-3">
+          <Link
+            href="/aion"
+            className="grid size-8 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5"
+            aria-label="Volver"
+          >
+            ←
+          </Link>
+          <Link
+            href="/aion/cliente/carrito"
+            className="relative grid size-8 place-items-center rounded-full bg-white text-stone-800 shadow-sm ring-1 ring-black/5"
+            aria-label="Abrir carrito"
+          >
+            <IconBag size={17} />
+            {lineCount > 0 ? (
+              <span
+                className="absolute -right-1 -top-1 min-w-4 rounded-full px-1 text-center text-[10px] font-bold text-white"
+                style={{ background: aion.colors.primary }}
+              >
+                {lineCount > 99 ? "99+" : lineCount}
+              </span>
+            ) : null}
+          </Link>
+        </header>
+
+        <h1
+          className="mt-3 text-3xl font-black leading-none"
           style={{ color: aion.colors.primary }}
         >
-          AION
-        </Link>
-        <Link
-          href="/aion/cliente/carrito"
-          className="relative grid h-9 w-9 place-items-center text-stone-800"
-          aria-label="Abrir carrito"
-        >
-          <IconBag />
-          {lineCount > 0 ? (
-            <span
-              className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full px-1 text-center text-[10px] font-bold text-white"
-              style={{ background: aion.colors.primary }}
-            >
-              {lineCount > 99 ? "99+" : lineCount}
-            </span>
-          ) : null}
-        </Link>
-      </header>
+          Nuestro menú
+        </h1>
 
-      <div className="px-4">
-        <div className="relative">
+        <div className="relative mt-3">
           <IconSearch
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
-            size={18}
+            size={16}
           />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full rounded-2xl border-0 py-2.5 pl-10 pr-3 text-sm shadow-sm ring-1 ring-black/5"
+            className="w-full rounded-2xl border-0 py-2.5 pl-9 pr-3 text-sm shadow-sm ring-1 ring-black/5"
             style={{ background: aion.colors.white, color: aion.colors.text }}
-            placeholder="Buscar platos.."
+            placeholder="Buscar..."
             type="search"
             autoComplete="off"
           />
         </div>
-      </div>
 
-      <div
-        className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label="Categorías"
-      >
-        {categories.map((c) => {
-          const active = cat === c.id;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setCat(c.id)}
-              className="shrink-0 rounded-2xl px-3.5 py-1.5 text-sm font-medium transition"
-              style={
-                active
-                  ? {
-                      background: aion.colors.primary,
-                      color: aion.colors.white,
-                    }
-                  : {
-                      background: aion.colors.pillInactive,
-                      color: aion.colors.text,
-                    }
-              }
-            >
-              {c.id === "todos" ? c.label : aionCategoryLabels[c.id]}
-            </button>
-          );
-        })}
+        <div
+          className="mt-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label="Categorías"
+        >
+          {categories.map((c) => {
+            const active = cat === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setCat(c.id)}
+                className="shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-300 ease-in-out"
+                style={
+                  active
+                    ? {
+                        background: aion.colors.primary,
+                        color: aion.colors.white,
+                      }
+                    : {
+                        background: aion.colors.pillInactive,
+                        color: aion.colors.text,
+                      }
+                }
+              >
+                {c.id === "todos" ? c.label : aionCategoryLabels[c.id]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {list.length === 0 ? (
@@ -133,7 +140,7 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
         </p>
       ) : (
         <ul
-          className="mt-2 flex list-none flex-col gap-2.5 px-4"
+          className="mx-auto mt-3 grid max-w-3xl list-none grid-cols-2 gap-3 px-4 sm:grid-cols-3"
           aria-live="polite"
         >
           {list.map((d) => (
