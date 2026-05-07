@@ -1,56 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import {
-  getAvailableTables,
-  createReservation,
-  type AvailableTable,
-  type ReservationFormData,
-  type ReservationConfirmation,
-  type FormErrors,
-} from "@/lib/db/reservations";
+import { useState, useEffect } from "react";
 
-//  Reemplaza con el UUID real de tu restaurante en Supabase
-const RESTAURANT_ID = "pon-aqui-el-uuid-del-restaurante";
-// Reemplaza con el user.id de la sesión cuando tengas auth
-const MOCK_USER_ID = "pon-aqui-un-uuid-de-usuario";
+type AvailableTable = { id: string; number: number; capacity: number };
+type Confirmation = {
+  id: string;
+  tableNumber: number;
+  date: string;
+  time: string;
+  partySize: number;
+};
+type FormErrors = Partial<
+  Record<"name" | "email" | "date" | "time" | "partySize" | "tableId", string>
+>;
 
-// --- Validación del formulario ---
-function validateForm(form: ReservationFormData): FormErrors {
+type FormData = {
+  name: string;
+  email: string;
+  phone: string;
+  date: string;
+  time: string;
+  partySize: number;
+  tableId: string;
+};
+
+function validateForm(form: FormData): FormErrors {
   const errors: FormErrors = {};
-
-  if (!form.name.trim()) {
-    errors.name = "El nombre es requerido";
-  }
-
-  if (!form.email.trim()) {
-    errors.email = "El email es requerido";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+  if (!form.name.trim()) errors.name = "El nombre es requerido";
+  if (!form.email.trim()) errors.email = "El email es requerido";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
     errors.email = "Email inválido";
-  }
-
-  if (!form.date) {
-    errors.date = "La fecha es requerida";
-  } else if (new Date(form.date) < new Date(new Date().toDateString())) {
+  if (!form.date) errors.date = "La fecha es requerida";
+  else if (new Date(form.date) < new Date(new Date().toDateString()))
     errors.date = "La fecha no puede ser en el pasado";
-  }
-
-  if (!form.time) {
-    errors.time = "La hora es requerida";
-  }
-
-  if (form.partySize < 1) {
-    errors.partySize = "Mínimo 1 persona";
-  } else if (form.partySize > 20) {
-    errors.partySize = "Máximo 20 personas";
-  }
-
+  if (!form.time) errors.time = "La hora es requerida";
+  if (form.partySize < 1) errors.partySize = "Mínimo 1 persona";
+  else if (form.partySize > 20) errors.partySize = "Máximo 20 personas";
   return errors;
 }
 
-// --- Página principal ---
 export default function ReservarPage() {
-  const [form, setForm] = useState<ReservationFormData>({
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
     phone: "",
@@ -59,15 +50,23 @@ export default function ReservarPage() {
     partySize: 1,
     tableId: "",
   });
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [availableTables, setAvailableTables] = useState<AvailableTable[]>([]);
   const [tablesSearched, setTablesSearched] = useState(false);
   const [loadingTables, setLoadingTables] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] =
-    useState<ReservationConfirmation | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+
+  // Obtener restaurantId al montar
+  useEffect(() => {
+    fetch("/api/restaurant")
+      .then((r) => r.json())
+      .then((d: { restaurant?: { id: string } }) => {
+        if (d.restaurant?.id) setRestaurantId(d.restaurant.id);
+      })
+      .catch(() => {});
+  }, []);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -85,9 +84,12 @@ export default function ReservarPage() {
     if (!form.date) searchErrors.date = "Ingresa una fecha";
     if (!form.time) searchErrors.time = "Ingresa una hora";
     if (form.partySize < 1) searchErrors.partySize = "Mínimo 1 persona";
-
     if (Object.keys(searchErrors).length > 0) {
       setErrors(searchErrors);
+      return;
+    }
+    if (!restaurantId) {
+      setSubmitError("No se encontró el restaurante");
       return;
     }
 
@@ -98,20 +100,18 @@ export default function ReservarPage() {
     setSubmitError(null);
 
     try {
-      const tables = await getAvailableTables(
-        RESTAURANT_ID,
-        form.date,
-        form.time,
-        form.partySize,
+      const res = await fetch(
+        `/api/reservas/mesas?restaurantId=${restaurantId}&date=${form.date}&time=${encodeURIComponent(form.time)}&partySize=${form.partySize}`,
       );
-      setAvailableTables(tables);
+      const data = (await res.json()) as {
+        tables?: AvailableTable[];
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Error al buscar mesas");
+      setAvailableTables(data.tables ?? []);
       setTablesSearched(true);
     } catch (err) {
-      if (err instanceof Error) {
-        setSubmitError(err.message);
-      } else {
-        setSubmitError("Error desconocido al buscar mesas");
-      }
+      setSubmitError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoadingTables(false);
     }
@@ -120,43 +120,54 @@ export default function ReservarPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
-
     const validationErrors = validateForm(form);
     if (!form.tableId) validationErrors.tableId = "Selecciona una mesa";
-
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
     setLoadingSubmit(true);
-
     try {
-      const result = await createReservation(form, MOCK_USER_ID);
-      setConfirmation(result);
+      const res = await fetch("/api/reservas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId,
+          tableId: form.tableId,
+          date: form.date,
+          time: form.time,
+          partySize: form.partySize,
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+        }),
+      });
+      const data = (await res.json()) as {
+        reservation?: Confirmation;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Error al crear la reserva");
+      setConfirmation(data.reservation!);
     } catch (err) {
-      if (err instanceof Error) {
-        setSubmitError(err.message);
-      } else {
-        setSubmitError("Error desconocido al crear la reserva");
-      }
+      setSubmitError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoadingSubmit(false);
     }
   }
 
-  // --- Pantalla de confirmación ---
+  // Confirmación
   if (confirmation) {
     return (
-      <main className="max-w-md mx-auto mt-16 p-6 bg-green-50 border border-green-300 rounded-xl text-center">
-        <h1 className="text-2xl font-bold text-green-700 mb-2">
+      <main className="mx-auto mt-16 max-w-md rounded-xl border border-green-300 bg-green-50 p-6 text-center">
+        <h1 className="mb-2 text-2xl font-bold text-green-700">
           ¡Reserva confirmada! 🎉
         </h1>
-        <p className="text-gray-600 mb-4">Tu número de reserva es:</p>
-        <p className="text-3xl font-mono font-bold text-green-800 bg-white border border-green-300 rounded-lg py-3 px-6 inline-block mb-4">
+        <p className="mb-4 text-gray-600">Tu número de reserva es:</p>
+        <p className="mb-4 inline-block rounded-lg border border-green-300 bg-white px-6 py-3 font-mono text-3xl font-bold text-green-800">
           {confirmation.id.slice(0, 8).toUpperCase()}
         </p>
-        <div className="text-gray-700 space-y-1 text-sm">
+        <div className="space-y-1 text-sm text-gray-700">
           <p>
             📅 <strong>{confirmation.date}</strong> a las{" "}
             <strong>{confirmation.time}</strong>
@@ -191,17 +202,16 @@ export default function ReservarPage() {
     );
   }
 
-  // --- Formulario ---
+  // Formulario
   return (
-    <main className="max-w-lg mx-auto mt-10 p-6">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">
+    <main className="mx-auto mt-10 max-w-lg p-6">
+      <h1 className="mb-6 text-2xl font-bold text-gray-800">
         Reservar una mesa
       </h1>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Nombre */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             Nombre completo
           </label>
           <input
@@ -210,16 +220,15 @@ export default function ReservarPage() {
             value={form.name}
             onChange={handleChange}
             placeholder="Ana García"
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
           {errors.name && (
-            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+            <p className="mt-1 text-xs text-red-500">{errors.name}</p>
           )}
         </div>
-
         {/* Email */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             Email
           </label>
           <input
@@ -228,16 +237,15 @@ export default function ReservarPage() {
             value={form.email}
             onChange={handleChange}
             placeholder="ana@email.com"
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
           {errors.email && (
-            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+            <p className="mt-1 text-xs text-red-500">{errors.email}</p>
           )}
         </div>
-
         {/* Teléfono */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
             Teléfono
           </label>
           <input
@@ -246,14 +254,13 @@ export default function ReservarPage() {
             value={form.phone}
             onChange={handleChange}
             placeholder="+57 300 000 0000"
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
-
         {/* Fecha / Hora / Personas */}
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Fecha
             </label>
             <input
@@ -262,14 +269,14 @@ export default function ReservarPage() {
               value={form.date}
               onChange={handleChange}
               min={new Date().toISOString().split("T")[0]}
-              className="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-lg border px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             {errors.date && (
-              <p className="text-red-500 text-xs mt-1">{errors.date}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.date}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Hora
             </label>
             <input
@@ -277,14 +284,14 @@ export default function ReservarPage() {
               name="time"
               value={form.time}
               onChange={handleChange}
-              className="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-lg border px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             {errors.time && (
-              <p className="text-red-500 text-xs mt-1">{errors.time}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.time}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Personas
             </label>
             <input
@@ -294,35 +301,33 @@ export default function ReservarPage() {
               onChange={handleChange}
               min={1}
               max={20}
-              className="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-lg border px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             {errors.partySize && (
-              <p className="text-red-500 text-xs mt-1">{errors.partySize}</p>
+              <p className="mt-1 text-xs text-red-500">{errors.partySize}</p>
             )}
           </div>
         </div>
-
         {/* Buscar mesas */}
         <button
           type="button"
-          onClick={handleSearchTables}
+          onClick={() => void handleSearchTables()}
           disabled={loadingTables}
-          className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 rounded-lg text-sm transition disabled:opacity-50"
+          className="w-full rounded-lg bg-gray-100 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-200 disabled:opacity-50"
         >
           {loadingTables ? "Buscando mesas..." : "🔍 Ver mesas disponibles"}
         </button>
-
-        {/* Resultados de mesas */}
+        {/* Resultados */}
         {tablesSearched && (
           <div>
             {availableTables.length === 0 ? (
-              <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <p className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-600">
                 No hay mesas disponibles para esa fecha, hora y número de
                 personas.
               </p>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Selecciona una mesa
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -333,39 +338,31 @@ export default function ReservarPage() {
                       onClick={() =>
                         setForm((prev) => ({ ...prev, tableId: table.id }))
                       }
-                      className={`border rounded-lg p-3 text-sm text-left transition ${
-                        form.tableId === table.id
-                          ? "border-blue-500 bg-blue-50 font-semibold"
-                          : "border-gray-200 hover:border-blue-300"
-                      }`}
+                      className={`rounded-lg border p-3 text-left text-sm transition ${form.tableId === table.id ? "border-blue-500 bg-blue-50 font-semibold" : "border-gray-200 hover:border-blue-300"}`}
                     >
                       🪑 Mesa #{table.number}
-                      <span className="block text-gray-500 text-xs">
+                      <span className="block text-xs text-gray-500">
                         Capacidad: {table.capacity} personas
                       </span>
                     </button>
                   ))}
                 </div>
                 {errors.tableId && (
-                  <p className="text-red-500 text-xs mt-1">{errors.tableId}</p>
+                  <p className="mt-1 text-xs text-red-500">{errors.tableId}</p>
                 )}
               </div>
             )}
           </div>
         )}
-
-        {/* Error general */}
         {submitError && (
-          <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
             {submitError}
           </p>
         )}
-
-        {/* Submit */}
         <button
           type="submit"
           disabled={loadingSubmit || !form.tableId}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-blue-600 py-2.5 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loadingSubmit ? "Guardando reserva..." : "Confirmar reserva"}
         </button>

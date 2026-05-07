@@ -12,12 +12,18 @@ import { useAionCart } from "@/components/aion/providers/cart-state";
 const categories: { id: AionCategoryId; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "entradas", label: "Entradas" },
-  { id: "principales", label: "Principales" },
-  { id: "pastas", label: "Pastas" },
+  { id: "ensaladas", label: "Ensaladas" },
   { id: "carnes", label: "Carnes" },
-  { id: "mariscos", label: "Mariscos" },
+  { id: "adiciones", label: "Adiciones" },
   { id: "postres", label: "Postres" },
   { id: "bebidas", label: "Bebidas" },
+  { id: "cafés", label: "Cafés" },
+  { id: "cervezas", label: "Cervezas" },
+  { id: "cócteles", label: "Cócteles" },
+  { id: "vino", label: "Vino" },
+  { id: "sangría", label: "Sangría" },
+  { id: "smoothies", label: "Smoothies" },
+  { id: "sándwiches", label: "Sándwiches" },
 ];
 
 export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
@@ -102,8 +108,14 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
               className="shrink-0 rounded-2xl px-3.5 py-1.5 text-sm font-medium transition"
               style={
                 active
-                  ? { background: aion.colors.primary, color: aion.colors.white }
-                  : { background: aion.colors.pillInactive, color: aion.colors.text }
+                  ? {
+                      background: aion.colors.primary,
+                      color: aion.colors.white,
+                    }
+                  : {
+                      background: aion.colors.pillInactive,
+                      color: aion.colors.text,
+                    }
               }
             >
               {c.id === "todos" ? c.label : aionCategoryLabels[c.id]}
@@ -120,10 +132,16 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
           {q.trim() ? "Sin resultados" : "No hay platos en esta categoría"}
         </p>
       ) : (
-        <ul className="mt-2 flex list-none flex-col gap-2.5 px-4" aria-live="polite">
+        <ul
+          className="mt-2 flex list-none flex-col gap-2.5 px-4"
+          aria-live="polite"
+        >
           {list.map((d) => (
             <li key={d.id}>
-              <AionMenuCard dish={d} hrefDetail={`/aion/cliente/plato/${d.id}`} />
+              <AionMenuCard
+                dish={d}
+                hrefDetail={`/aion/cliente/plato/${d.id}`}
+              />
             </li>
           ))}
         </ul>

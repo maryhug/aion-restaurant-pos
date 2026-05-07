@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db/supabase";
+import prisma from "@/lib/prisma";
 import { requireTenantSession } from "@/lib/auth/session";
 
 function parseYearMonth(req: NextRequest): { year: number; month: number } {
@@ -26,11 +26,13 @@ function parseYearMonth(req: NextRequest): { year: number; month: number } {
 function monthBounds(
   year: number,
   month: number,
-): { from: string; toExclusive: string } {
-  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+): { from: Date; toExclusive: Date } {
+  const from = new Date(`${year}-${String(month).padStart(2, "0")}-01`);
   const nextYear = month === 12 ? year + 1 : year;
   const nextMonth = month === 12 ? 1 : month + 1;
-  const toExclusive = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+  const toExclusive = new Date(
+    `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`,
+  );
   return { from, toExclusive };
 }
 
@@ -40,18 +42,25 @@ export async function GET(req: NextRequest) {
     const { year, month } = parseYearMonth(req);
     const { from, toExclusive } = monthBounds(year, month);
 
-    const { data, error } = await supabase
-      .from("expenses")
-      .select("*")
-      .eq("restaurant_id", session.restaurantId!)
-      .gte("date", from)
-      .lt("date", toExclusive)
-      .order("date", { ascending: false });
+    const rows = await prisma.expenses.findMany({
+      where: {
+        restaurant_id: session.restaurantId!,
+        date: { gte: from, lt: toExclusive },
+      },
+      orderBy: { date: "desc" },
+    });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ expenses: data ?? [] }, { status: 200 });
+    const expenses = rows.map((r) => ({
+      ...r,
+      amount: Number(r.amount),
+      date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
+      created_at:
+        r.created_at instanceof Date
+          ? r.created_at.toISOString()
+          : r.created_at,
+    }));
+
+    return NextResponse.json({ expenses }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No autorizado";
     return NextResponse.json({ error: message }, { status: 401 });
@@ -75,23 +84,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
-      .from("expenses")
-      .insert({
+    const row = await prisma.expenses.create({
+      data: {
         description: body.description.trim(),
         amount: Number(body.amount),
         category: body.category,
-        date: body.date,
+        date: new Date(body.date),
         restaurant_id: session.restaurantId!,
         user_id: session.id,
-      })
-      .select("*")
-      .single();
+      },
+    });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ expense: data }, { status: 201 });
+    const expense = {
+      ...row,
+      amount: Number(row.amount),
+      date:
+        row.date instanceof Date
+          ? row.date.toISOString().slice(0, 10)
+          : row.date,
+      created_at:
+        row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : row.created_at,
+    };
+
+    return NextResponse.json({ expense }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No autorizado";
     return NextResponse.json({ error: message }, { status: 401 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db/supabase";
+import prisma from "@/lib/prisma";
 import { requireTenantSession } from "@/lib/auth/session";
 
 function parseYearMonth(req: NextRequest): { year: number; month: number } {
@@ -26,11 +26,13 @@ function parseYearMonth(req: NextRequest): { year: number; month: number } {
 function monthBounds(
   year: number,
   month: number,
-): { from: string; toExclusive: string } {
-  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+): { from: Date; toExclusive: Date } {
+  const from = new Date(`${year}-${String(month).padStart(2, "0")}-01`);
   const nextYear = month === 12 ? year + 1 : year;
   const nextMonth = month === 12 ? 1 : month + 1;
-  const toExclusive = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+  const toExclusive = new Date(
+    `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`,
+  );
   return { from, toExclusive };
 }
 
@@ -40,73 +42,51 @@ export async function GET(req: NextRequest) {
     const { year, month } = parseYearMonth(req);
     const { from, toExclusive } = monthBounds(year, month);
 
-    const { data: sales, error: salesError } = await supabase
-      .from("sales")
-      .select("total")
-      .eq("restaurant_id", session.restaurantId!)
-      .gte("created_at", from)
-      .lt("created_at", toExclusive);
-    if (salesError) {
-      return NextResponse.json({ error: salesError.message }, { status: 500 });
-    }
+    const [sales, expenses, orders] = await Promise.all([
+      prisma.sales.findMany({
+        where: {
+          restaurant_id: session.restaurantId!,
+          created_at: { gte: from, lt: toExclusive },
+        },
+        select: { total: true },
+      }),
+      prisma.expenses.findMany({
+        where: {
+          restaurant_id: session.restaurantId!,
+          date: { gte: from, lt: toExclusive },
+        },
+        select: { amount: true },
+      }),
+      prisma.orders.findMany({
+        where: {
+          created_at: { gte: from, lt: toExclusive },
+          tables: { restaurant_id: session.restaurantId! },
+        },
+        select: { id: true },
+      }),
+    ]);
 
-    const { data: expenses, error: expensesError } = await supabase
-      .from("expenses")
-      .select("amount")
-      .eq("restaurant_id", session.restaurantId!)
-      .gte("date", from)
-      .lt("date", toExclusive);
-    if (expensesError) {
-      return NextResponse.json(
-        { error: expensesError.message },
-        { status: 500 },
-      );
-    }
-
-    const { data: orders, error: ordersError } = await supabase
-      .from("orders")
-      .select("id, tables!inner(restaurant_id)")
-      .eq("tables.restaurant_id", session.restaurantId!)
-      .gte("created_at", from)
-      .lt("created_at", toExclusive);
-    if (ordersError) {
-      return NextResponse.json({ error: ordersError.message }, { status: 500 });
-    }
-
-    const orderIds = (orders ?? []).map((o: { id: string }) => o.id);
+    const orderIds = orders.map((o) => o.id);
     let totalCosts = 0;
-    if (orderIds.length > 0) {
-      const { data: orderItems, error: itemsError } = await supabase
-        .from("order_items")
-        .select("quantity, menu_items(cost_price)")
-        .in("order_id", orderIds);
-      if (itemsError) {
-        return NextResponse.json(
-          { error: itemsError.message },
-          { status: 500 },
-        );
-      }
 
-      totalCosts = (orderItems ?? []).reduce(
-        (
-          sum: number,
-          item: {
-            quantity: number;
-            menu_items: { cost_price: number | null } | null;
-          },
-        ) => sum + (item.menu_items?.cost_price ?? 0) * item.quantity,
+    if (orderIds.length > 0) {
+      const orderItems = await prisma.order_items.findMany({
+        where: { order_id: { in: orderIds } },
+        select: {
+          quantity: true,
+          menu_items: { select: { cost_price: true } },
+        },
+      });
+
+      totalCosts = orderItems.reduce(
+        (s, item) =>
+          s + (Number(item.menu_items.cost_price) || 0) * item.quantity,
         0,
       );
     }
 
-    const totalSales = (sales ?? []).reduce(
-      (sum: number, item: { total: number }) => sum + Number(item.total),
-      0,
-    );
-    const totalExpenses = (expenses ?? []).reduce(
-      (sum: number, item: { amount: number }) => sum + Number(item.amount),
-      0,
-    );
+    const totalSales = sales.reduce((s, r) => s + Number(r.total), 0);
+    const totalExpenses = expenses.reduce((s, r) => s + Number(r.amount), 0);
 
     return NextResponse.json(
       {

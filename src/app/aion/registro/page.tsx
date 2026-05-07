@@ -50,9 +50,12 @@ const PhoneI = (
   </svg>
 );
 
-function IconInput(
-  p: { id: string; label: string; icon: ReactNode; children: ReactNode },
-) {
+function IconInput(p: {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div>
       <label
@@ -137,6 +140,11 @@ export default function AionRegistroPage() {
       };
 
       if (!response.ok) {
+        if (response.status === 409) {
+          // Email ya registrado → llevar al login
+          router.push("/aion/login?hint=ya-registrado");
+          return;
+        }
         setErr(data.error ?? "No se pudo crear la cuenta.");
         return;
       }
@@ -178,11 +186,7 @@ export default function AionRegistroPage() {
           </p>
         ) : null}
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
-          <IconInput
-            id="aion-r-name"
-            label="Nombre completo"
-            icon={UserI}
-          >
+          <IconInput id="aion-r-name" label="Nombre completo" icon={UserI}>
             <input
               id="aion-r-name"
               className="w-full rounded-xl border-0 py-2.5 pl-9 pr-3 text-sm ring-1 ring-black/10"
@@ -265,7 +269,11 @@ export default function AionRegistroPage() {
               }}
             />
             Acepto los{" "}
-            <a className="font-bold" style={{ color: aion.colors.primary }} href="#">
+            <a
+              className="font-bold"
+              style={{ color: aion.colors.primary }}
+              href="#"
+            >
               términos de servicio
             </a>{" "}
             y la{" "}
