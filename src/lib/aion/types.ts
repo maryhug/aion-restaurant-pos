@@ -1,12 +1,18 @@
 export type AionCategoryId =
   | "todos"
-  | "entradas"
-  | "principales"
-  | "pastas"
+  | "adiciones"
+  | "bebidas"
+  | "cafés"
   | "carnes"
-  | "mariscos"
+  | "cervezas"
+  | "cócteles"
+  | "ensaladas"
+  | "entradas"
   | "postres"
-  | "bebidas";
+  | "sangría"
+  | "smoothies"
+  | "sándwiches"
+  | "vino";
 
 export interface AionDish {
   id: string;

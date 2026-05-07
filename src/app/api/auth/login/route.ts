@@ -10,7 +10,6 @@ import {
 } from "@/lib/auth/jwt";
 import { isValidEmail, normalizeEmail } from "@/lib/auth/validators";
 import { mapAuthDbError } from "@/lib/auth/prisma-error";
-import { supabaseRaw } from "@/lib/db/supabase";
 
 type LoginBody = {
   email?: string;
@@ -56,14 +55,11 @@ export async function POST(req: NextRequest) {
 
     // Intentamos resolver tenant por membresía del usuario.
     try {
-      const { data: memberships } = (await supabaseRaw
-        .from("user_restaurants")
-        .select("restaurant_id")
-        .eq("user_id", user.id)
-        .limit(1)) as {
-        data: Array<{ restaurant_id: string }> | null;
-      };
-      restaurantId = memberships?.[0]?.restaurant_id ?? null;
+      const membership = await prisma.user_restaurants.findFirst({
+        where: { user_id: user.id },
+        select: { restaurant_id: true },
+      });
+      restaurantId = membership?.restaurant_id ?? null;
     } catch {
       restaurantId = null;
     }

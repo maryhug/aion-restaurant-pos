@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { aion } from "@/lib/aion/tokens";
 import { AionPasswordField } from "@/components/aion/auth/password-field";
 import { isValidEmail } from "@/lib/auth/validators";
@@ -28,6 +28,13 @@ export default function AionLoginPage() {
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("hint") === "ya-registrado") {
+      setOk("Este correo ya tiene cuenta. Inicia sesión aquí.");
+    }
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -226,7 +233,10 @@ export default function AionLoginPage() {
           </Link>
         </p>
       </div>
-      <p className="mt-6 max-w-sm text-center text-[10px] leading-normal" style={{ color: aion.colors.muted }}>
+      <p
+        className="mt-6 max-w-sm text-center text-[10px] leading-normal"
+        style={{ color: aion.colors.muted }}
+      >
         Al iniciar sesión, aceptas nuestros{" "}
         <a className="underline" href="#">
           Términos de servicio
