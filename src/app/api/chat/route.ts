@@ -1,4 +1,4 @@
-import { dishes } from "@/data/dishes";
+import { fetchAionMenuDishes } from "@/lib/aion/menu-items";
 import { cosineSimilarity, getEmbedding } from "@/vectorUtils";
 
 export async function POST(req: Request) {
@@ -7,34 +7,38 @@ export async function POST(req: Request) {
   let context = "";
 
   try {
-    // 1. Obtener embedding de la pregunta del usuario
-    const userEmbedding = await getEmbedding(message);
+    const dishes = await fetchAionMenuDishes();
+    if (dishes.length === 0) {
+      console.warn("Chat sin contexto: no hay platos disponibles en DB");
+    } else {
+      // 1. Obtener embedding de la pregunta del usuario
+      const userEmbedding = await getEmbedding(message);
 
-    // 2. Obtener embeddings de los platos y calcular similitud
-    // (En una app real, los embeddings de los platos estarían pre-calculados en una DB)
-    const dishesWithSimilarity = await Promise.all(
-      dishes.map(async (dish) => {
-        const dishText = `${dish.name}: ${dish.description}`;
-        const dishEmbedding = await getEmbedding(dishText);
-        return {
-          ...dish,
-          similarity: cosineSimilarity(userEmbedding, dishEmbedding),
-        };
-      }),
-    );
+      // 2. Obtener embeddings de los platos y calcular similitud
+      const dishesWithSimilarity = await Promise.all(
+        dishes.map(async (dish) => {
+          const dishText = `${dish.name}: ${dish.description}`;
+          const dishEmbedding = await getEmbedding(dishText);
+          return {
+            ...dish,
+            similarity: cosineSimilarity(userEmbedding, dishEmbedding),
+          };
+        }),
+      );
 
-    // 3. Tomar los 3 platos más relevantes
-    const topDishes = dishesWithSimilarity
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 3);
+      // 3. Tomar los 3 platos más relevantes
+      const topDishes = dishesWithSimilarity
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 3);
 
-    // 4. Crear el contexto para la IA
-    context = topDishes
-      .map(
-        (d) =>
-          `- ${d.name} (${d.category}): ${d.description}. Precio: $${d.price}`,
-      )
-      .join("\n");
+      // 4. Crear el contexto para la IA
+      context = topDishes
+        .map(
+          (d) =>
+            `- ${d.name} (${d.category}): ${d.description}. Precio: $${d.price}`,
+        )
+        .join("\n");
+    }
   } catch (error) {
     console.error("Error en RAG:", error);
   }
