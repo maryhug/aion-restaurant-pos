@@ -8,10 +8,20 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as {
       restaurantId?: string;
       tableId?: string | null;
+      branchId?: string | null;
       items?: { menuItemId: string; quantity: number; unitPrice: number }[];
     };
 
-    const { restaurantId, tableId, items } = body;
+    const { restaurantId: bodyRestaurantId, tableId, branchId, items } = body;
+
+    let restaurantId = bodyRestaurantId ?? null;
+    if (!restaurantId && tableId) {
+      const table = await prisma.tables.findUnique({
+        where: { id: tableId },
+        select: { restaurant_id: true },
+      });
+      restaurantId = table?.restaurant_id ?? null;
+    }
 
     if (!restaurantId || !items || items.length === 0) {
       return NextResponse.json(
@@ -46,6 +56,8 @@ export async function POST(req: NextRequest) {
     const order = await prisma.orders.create({
       data: {
         table_id: tableId ?? null,
+        restaurant_id: restaurantId,
+        branch_id: branchId ?? null,
         status: "pending" satisfies OrderStatus,
         total,
         order_items: {

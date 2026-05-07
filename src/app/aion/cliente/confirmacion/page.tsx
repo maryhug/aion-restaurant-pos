@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { formatCOP } from "@/lib/aion/currency";
 import { aion } from "@/lib/aion/tokens";
-import { loadPreorderMeta, type PreorderMeta } from "@/lib/aion/preorder-storage";
+import {
+  loadPreorderMeta,
+  type PreorderMeta,
+} from "@/lib/aion/preorder-storage";
 
 type View = "load" | "ok" | "mismatch" | "missing";
 
@@ -22,24 +25,14 @@ function formatD(d: string) {
 function AionConfirmacionInner() {
   const sp = useSearchParams();
   const refParam = sp.get("ref");
-  const [view, setView] = useState<View>("load");
-  const [data, setData] = useState<PreorderMeta | null>(null);
-
-  useEffect(() => {
+  const resolved = useMemo((): { view: View; data: PreorderMeta | null } => {
     const m = loadPreorderMeta();
-    if (!m) {
-      setData(null);
-      setView("missing");
-      return;
-    }
-    if (refParam && m.orderRef !== refParam) {
-      setData(null);
-      setView("mismatch");
-      return;
-    }
-    setData(m);
-    setView("ok");
+    if (!m) return { view: "missing", data: null };
+    if (refParam && m.orderRef !== refParam)
+      return { view: "mismatch", data: null };
+    return { view: "ok", data: m };
   }, [refParam]);
+  const { view, data } = resolved;
 
   if (view === "load") {
     return (
@@ -107,7 +100,10 @@ function AionConfirmacionInner() {
       >
         ¡Reserva y preorden confirmada!
       </h1>
-      <p className="mt-1 text-center text-sm" style={{ color: aion.colors.muted }}>
+      <p
+        className="mt-1 text-center text-sm"
+        style={{ color: aion.colors.muted }}
+      >
         Código:{" "}
         <span
           className="font-mono text-base font-bold"
@@ -130,7 +126,10 @@ function AionConfirmacionInner() {
           <strong>Comensales:</strong> {data.partySize}
         </p>
         <p className="pt-1 font-semibold">Tu preorden</p>
-        <ul className="list-none space-y-1" style={{ color: aion.colors.muted }}>
+        <ul
+          className="list-none space-y-1"
+          style={{ color: aion.colors.muted }}
+        >
           {data.lines.map((l) => (
             <li key={l.dishId} className="flex justify-between gap-2 text-sm">
               <span>
@@ -148,7 +147,10 @@ function AionConfirmacionInner() {
           <span>{formatCOP(data.subtotal)}</span>
         </p>
       </div>
-      <p className="mt-3 text-center text-xs" style={{ color: aion.colors.muted }}>
+      <p
+        className="mt-3 text-center text-xs"
+        style={{ color: aion.colors.muted }}
+      >
         Sigue el estado de preparación en el restaurante o aquí.
       </p>
       <Link

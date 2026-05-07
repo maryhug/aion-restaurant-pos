@@ -21,9 +21,9 @@ export function AionMenuTableClient({ id: _id, initialOn }: RowProps) {
       style={{
         background: on ? aion.colors.primary : "#D4D0C8",
       }}
-      title={on ? "Disponible" : "No disponible"}
+      title={`${on ? "Disponible" : "No disponible"} · ${_id}`}
       aria-pressed={on}
-      aria-label="Disponible"
+      aria-label={`Disponible ${_id}`}
     >
       <span
         className="absolute top-0.5 h-4 w-4 rounded-full bg-white"

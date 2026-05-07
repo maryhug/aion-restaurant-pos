@@ -41,9 +41,21 @@ function isUrgent(status: ActiveDbStatus, createdAt: Date): boolean {
   return minutes >= 12;
 }
 
-export async function getActiveStaffOrders(): Promise<AionStaffOrder[]> {
+export async function getActiveStaffOrders(
+  restaurantId?: string,
+): Promise<AionStaffOrder[]> {
   const orders = (await prisma.orders.findMany({
-    where: { status: { in: ACTIVE_STATUSES as unknown as string[] } },
+    where: {
+      status: { in: ACTIVE_STATUSES as unknown as string[] },
+      ...(restaurantId
+        ? {
+            OR: [
+              { restaurant_id: restaurantId },
+              { tables: { restaurant_id: restaurantId } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { created_at: "asc" },
     include: {
       tables: { select: { number: true } },
@@ -84,11 +96,25 @@ export async function getActiveStaffOrders(): Promise<AionStaffOrder[]> {
   });
 }
 
-export async function advanceStaffOrderStatus(orderId: string): Promise<void> {
+export async function advanceStaffOrderStatus(
+  orderId: string,
+  restaurantId?: string,
+): Promise<void> {
   const current = await prisma.orders.findUnique({
     where: { id: orderId },
-    select: { status: true },
+    select: {
+      status: true,
+      restaurant_id: true,
+      tables: { select: { restaurant_id: true } },
+    },
   });
+  if (restaurantId) {
+    const ownerRestaurantId =
+      current.restaurant_id ?? current.tables?.restaurant_id;
+    if (ownerRestaurantId !== restaurantId) {
+      throw new Error("Orden fuera del tenant");
+    }
+  }
 
   if (!current) {
     throw new Error("Pedido no encontrado");
