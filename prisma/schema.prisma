@@ -6,6 +6,76 @@ datasource db {
   provider = "postgresql"
 }
 
+enum theme_mode {
+  light
+  dark
+  system
+}
+
+enum order_type {
+  salon
+  reserva
+  domicilio
+  recoger
+}
+
+enum payment_status {
+  pending
+  paid
+  refunded
+  partial
+}
+
+enum payment_method_v2 {
+  cash
+  card
+  transfer
+  wallet
+}
+
+enum employee_status {
+  active
+  inactive
+  suspended
+}
+
+enum contract_type {
+  fijo
+  indefinido
+  prestacion
+  temporal
+}
+
+enum cash_shift_status {
+  open
+  closed
+  cancelled
+}
+
+enum cash_closure_status {
+  cuadrado
+  sobrante
+  faltante
+}
+
+enum cash_movement_type {
+  opening
+  sale_cash
+  other_income
+  withdrawal
+  expense
+  adjustment
+  closing
+}
+
+enum reservation_source {
+  walk_in
+  web
+  phone
+  whatsapp
+  app
+}
+
 model menu_items {
   id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   restaurant_id String        @db.Uuid
@@ -21,6 +91,8 @@ model menu_items {
   image_url     String?
   restaurants   restaurants   @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   order_items   order_items[]
+
+  @@index([restaurant_id, available, category])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -36,44 +108,93 @@ model order_items {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model orders {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reservation_id String?       @db.Uuid
-  table_id       String?       @db.Uuid
-  status         String        @default("pending")
-  total          Decimal       @default(0) @db.Decimal(10, 2)
-  created_at     DateTime      @default(now()) @db.Timestamptz(6)
-  order_items    order_items[]
-  reservations   reservations? @relation(fields: [reservation_id], references: [id], onUpdate: NoAction)
-  tables         tables?       @relation(fields: [table_id], references: [id], onUpdate: NoAction)
-  sales          sales[]
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reservation_id       String?            @db.Uuid
+  table_id             String?            @db.Uuid
+  restaurant_id        String?            @db.Uuid
+  branch_id            String?            @db.Uuid
+  cash_shift_id        String?            @db.Uuid
+  assigned_employee_id String?            @db.Uuid
+  placed_by_user_id    String?            @db.Uuid
+  status               String             @default("pending")
+  order_type           order_type?
+  payment_status       payment_status?    @default(pending)
+  payment_method_v2    payment_method_v2?
+  customer_name        String?
+  customer_phone       String?
+  notes                String?
+  total                Decimal            @default(0) @db.Decimal(10, 2)
+  paid_at              DateTime?          @db.Timestamptz(6)
+  delivered_at         DateTime?          @db.Timestamptz(6)
+  cancelled_at         DateTime?          @db.Timestamptz(6)
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  order_items          order_items[]
+  reservations         reservations?      @relation(fields: [reservation_id], references: [id], onUpdate: NoAction)
+  tables               tables?            @relation(fields: [table_id], references: [id], onUpdate: NoAction)
+  restaurants          restaurants?       @relation(fields: [restaurant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  branches             branches?          @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cash_shifts          cash_shifts?       @relation(fields: [cash_shift_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  assigned_employee    employees?         @relation(fields: [assigned_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  placed_by_user       users?             @relation("orders_placed_by_user", fields: [placed_by_user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  sales                sales[]
+
+  @@index([restaurant_id, status, created_at])
+  @@index([branch_id, status, created_at])
+  @@index([cash_shift_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model reservations {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String   @db.Uuid
-  table_id   String   @db.Uuid
-  date       DateTime @db.Date
-  time       DateTime @db.Time(6)
-  party_size Int
-  status     String   @default("pending")
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  orders     orders[]
-  tables     tables   @relation(fields: [table_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String              @db.Uuid
+  table_id       String              @db.Uuid
+  restaurant_id  String?             @db.Uuid
+  branch_id      String?             @db.Uuid
+  date           DateTime            @db.Date
+  time           DateTime            @db.Time(6)
+  party_size     Int
+  status         String              @default("pending")
+  source         reservation_source?
+  customer_name  String?
+  customer_phone String?
+  customer_email String?
+  notes          String?
+  created_at     DateTime            @default(now()) @db.Timestamptz(6)
+  orders         orders[]
+  tables         tables              @relation(fields: [table_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users          users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  restaurants    restaurants?        @relation(fields: [restaurant_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  branches       branches?           @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([restaurant_id, date, status])
+  @@index([branch_id, date, time])
 }
 
 model restaurants {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String
-  address    String?
-  phone      String?
-  created_at DateTime     @default(now()) @db.Timestamptz(6)
-  expenses   expenses[]
-  menu_items menu_items[]
-  memberships user_restaurants[]
-  sales      sales[]
-  tables     tables[]
+  id                String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  address           String?
+  phone             String?
+  created_at        DateTime                  @default(now()) @db.Timestamptz(6)
+  expenses          expenses[]
+  menu_items        menu_items[]
+  memberships       user_restaurants[]
+  sales             sales[]
+  tables            tables[]
+  branches          branches[]
+  settings          restaurant_settings?
+  branding          restaurant_branding?
+  integrations      restaurant_integrations?
+  feature_flags     restaurant_feature_flags?
+  employees         employees[]
+  employee_payments employee_payments[]
+  cash_registers    cash_registers[]
+  cash_shifts       cash_shifts[]
+  cash_movements    cash_movements[]
+  cash_closures     cash_closures[]
+  audit_logs        audit_logs[]
+  orders            orders[]
+  reservations      reservations[]
 }
 
 model rewards {
@@ -88,18 +209,31 @@ model rewards {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model sales {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order_id       String?  @db.Uuid
-  restaurant_id  String?  @db.Uuid
-  table_id       String?  @db.Uuid
-  total          Decimal  @db.Decimal(10, 2)
-  payment_method String
-  cash_received  Decimal? @db.Decimal(10, 2)
-  change_given   Decimal? @db.Decimal(10, 2)
-  created_at     DateTime @default(now()) @db.Timestamptz(6)
-  orders         orders?  @relation(fields: [order_id], references: [id], onUpdate: NoAction)
-  restaurants    restaurants? @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tables         tables?  @relation(fields: [table_id], references: [id], onUpdate: NoAction)
+  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                 String?            @db.Uuid
+  restaurant_id            String?            @db.Uuid
+  table_id                 String?            @db.Uuid
+  branch_id                String?            @db.Uuid
+  cash_shift_id            String?            @db.Uuid
+  processed_by_employee_id String?            @db.Uuid
+  total                    Decimal            @db.Decimal(10, 2)
+  payment_method           String
+  payment_method_v2        payment_method_v2?
+  payment_status           payment_status?    @default(paid)
+  cash_received            Decimal?           @db.Decimal(10, 2)
+  change_given             Decimal?           @db.Decimal(10, 2)
+  created_at               DateTime           @default(now()) @db.Timestamptz(6)
+  orders                   orders?            @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  restaurants              restaurants?       @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tables                   tables?            @relation(fields: [table_id], references: [id], onUpdate: NoAction)
+  branches                 branches?          @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cash_shifts              cash_shifts?       @relation(fields: [cash_shift_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  processed_by_employee    employees?         @relation(fields: [processed_by_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([restaurant_id, created_at])
+  @@index([branch_id, created_at])
+  @@index([payment_method_v2, created_at])
+  @@index([cash_shift_id, created_at])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -110,26 +244,37 @@ model expenses {
   category      String
   date          DateTime    @db.Date
   restaurant_id String      @db.Uuid
+  branch_id     String?     @db.Uuid
   user_id       String?     @db.Uuid
   created_at    DateTime    @default(now()) @db.Timestamptz(6)
   restaurants   restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches      branches?   @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   users         users?      @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([restaurant_id, date])
+  @@index([branch_id, date])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tables {
   id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   restaurant_id String         @db.Uuid
+  branch_id     String?        @db.Uuid
   number        Int
   capacity      Int
   status        String         @default("available")
+  zone          String?
+  notes         String?
   qr_code       String?
   orders        orders[]
   reservations  reservations[]
   sales         sales[]
   restaurants   restaurants    @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches      branches?      @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@unique([restaurant_id, number])
+  @@index([restaurant_id, status])
+  @@index([branch_id, status])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -143,17 +288,20 @@ model user_levels {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model users {
-  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String         @unique
-  name         String
-  password     String?
-  role         String         @default("customer")
-  created_at   DateTime       @default(now()) @db.Timestamptz(6)
-  expenses     expenses[]
-  memberships  user_restaurants[]
-  reservations reservations[]
-  rewards      rewards[]
-  user_levels  user_levels?
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String             @unique
+  name             String
+  password         String?
+  role             String             @default("customer")
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  expenses         expenses[]
+  memberships      user_restaurants[]
+  reservations     reservations[]
+  rewards          rewards[]
+  user_levels      user_levels?
+  employee_profile employees?
+  audit_logs       audit_logs[]
+  placed_orders    orders[]           @relation("orders_placed_by_user")
 }
 
 model user_restaurants {
@@ -166,4 +314,270 @@ model user_restaurants {
   users         users       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_id, restaurant_id])
+}
+
+model branches {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id     String              @db.Uuid
+  name              String
+  code              String?
+  address           String?
+  city              String?
+  phone             String?
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  restaurants       restaurants         @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tables            tables[]
+  orders            orders[]
+  reservations      reservations[]
+  sales             sales[]
+  expenses          expenses[]
+  employees         employees[]
+  employee_payments employee_payments[]
+  cash_registers    cash_registers[]
+  cash_shifts       cash_shifts[]
+  cash_closures     cash_closures[]
+  cash_movements    cash_movements[]
+  audit_logs        audit_logs[]
+
+  @@unique([restaurant_id, name])
+  @@index([restaurant_id, is_active])
+}
+
+model restaurant_settings {
+  id                        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id             String      @unique @db.Uuid
+  currency                  String      @default("COP")
+  timezone                  String      @default("America/Bogota")
+  tax_rate                  Decimal?    @db.Decimal(5, 2)
+  tip_suggested_pct         Decimal?    @db.Decimal(5, 2)
+  cancellation_policy       String?
+  reservation_tolerance_min Int?        @default(15)
+  reservation_max_minutes   Int?        @default(120)
+  default_order_type        String?
+  enabled_payment_methods   Json?
+  shift_config              Json?
+  invoice_config            Json?
+  created_at                DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime    @updatedAt @db.Timestamptz(6)
+  restaurants               restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model restaurant_branding {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id      String      @unique @db.Uuid
+  primary_color      String      @default("#581c22")
+  secondary_color    String      @default("#7b4b52")
+  accent_color       String      @default("#d97706")
+  background_color   String      @default("#ffe5e5")
+  logo_url           String?
+  favicon_url        String?
+  default_theme_mode theme_mode  @default(light)
+  use_aion_defaults  Boolean     @default(true)
+  created_at         DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime    @updatedAt @db.Timestamptz(6)
+  restaurants        restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model restaurant_integrations {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id   String      @unique @db.Uuid
+  payment_gateway String?
+  whatsapp_number String?
+  smtp_from       String?
+  smtp_host       String?
+  thermal_printer Json?
+  api_keys        Json?
+  webhooks        Json?
+  created_at      DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime    @updatedAt @db.Timestamptz(6)
+  restaurants     restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model restaurant_feature_flags {
+  id                   String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id        String      @unique @db.Uuid
+  enable_multi_branch  Boolean     @default(false)
+  enable_cash_closure  Boolean     @default(true)
+  enable_payroll       Boolean     @default(true)
+  enable_admin_chatbot Boolean     @default(false)
+  flags                Json?
+  created_at           DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime    @updatedAt @db.Timestamptz(6)
+  restaurants          restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model employees {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id    String              @db.Uuid
+  branch_id        String?             @db.Uuid
+  user_id          String?             @unique @db.Uuid
+  full_name        String
+  document_number  String?
+  role_title       String
+  contract_type    contract_type?
+  salary           Decimal?            @db.Decimal(12, 2)
+  status           employee_status     @default(active)
+  hired_at         DateTime?           @db.Date
+  ended_at         DateTime?           @db.Date
+  created_at       DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime            @updatedAt @db.Timestamptz(6)
+  restaurants      restaurants         @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches         branches?           @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  users            users?              @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  payments         employee_payments[]
+  assigned_orders  orders[]
+  processed_sales  sales[]
+  opened_shifts    cash_shifts[]       @relation("cash_shift_opened_by")
+  closed_shifts    cash_shifts[]       @relation("cash_shift_closed_by")
+  closure_records  cash_closures[]     @relation("cash_closure_closed_by")
+  movement_records cash_movements[]    @relation("cash_movement_created_by")
+  audit_logs       audit_logs[]
+
+  @@index([restaurant_id, status])
+  @@index([branch_id, status])
+}
+
+model employee_payments {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id     String      @db.Uuid
+  branch_id         String?     @db.Uuid
+  employee_id       String      @db.Uuid
+  period_start      DateTime?   @db.Date
+  period_end        DateTime?   @db.Date
+  gross_amount      Decimal     @db.Decimal(12, 2)
+  deductions_amount Decimal?    @db.Decimal(12, 2)
+  net_amount        Decimal     @db.Decimal(12, 2)
+  payment_date      DateTime?   @db.Date
+  payment_method    String?
+  note              String?
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  restaurants       restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches          branches?   @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  employees         employees   @relation(fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([restaurant_id, payment_date])
+  @@index([employee_id, payment_date])
+}
+
+model cash_registers {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id String           @db.Uuid
+  branch_id     String?          @db.Uuid
+  name          String
+  code          String?
+  is_active     Boolean          @default(true)
+  created_at    DateTime         @default(now()) @db.Timestamptz(6)
+  restaurants   restaurants      @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches      branches?        @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  shifts        cash_shifts[]
+  movements     cash_movements[]
+
+  @@unique([restaurant_id, name])
+  @@index([restaurant_id, is_active])
+}
+
+model cash_shifts {
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id         String            @db.Uuid
+  branch_id             String?           @db.Uuid
+  cash_register_id      String            @db.Uuid
+  opened_by_employee_id String?           @db.Uuid
+  closed_by_employee_id String?           @db.Uuid
+  opened_at             DateTime          @default(now()) @db.Timestamptz(6)
+  closed_at             DateTime?         @db.Timestamptz(6)
+  opening_balance       Decimal           @db.Decimal(12, 2)
+  expected_cash         Decimal?          @db.Decimal(12, 2)
+  counted_cash          Decimal?          @db.Decimal(12, 2)
+  difference            Decimal?          @db.Decimal(12, 2)
+  status                cash_shift_status @default(open)
+  note                  String?
+  created_at            DateTime          @default(now()) @db.Timestamptz(6)
+  restaurants           restaurants       @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches              branches?         @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cash_registers        cash_registers    @relation(fields: [cash_register_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  opened_by             employees?        @relation("cash_shift_opened_by", fields: [opened_by_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  closed_by             employees?        @relation("cash_shift_closed_by", fields: [closed_by_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  movements             cash_movements[]
+  closures              cash_closures[]
+  sales                 sales[]
+  orders                orders[]
+
+  @@index([restaurant_id, opened_at])
+  @@index([restaurant_id, status, opened_at])
+  @@index([cash_register_id, status])
+}
+
+model cash_movements {
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id          String             @db.Uuid
+  branch_id              String?            @db.Uuid
+  cash_shift_id          String             @db.Uuid
+  cash_register_id       String             @db.Uuid
+  created_by_employee_id String?            @db.Uuid
+  movement_type          cash_movement_type
+  amount                 Decimal            @db.Decimal(12, 2)
+  category               String?
+  reference_type         String?
+  reference_id           String?            @db.Uuid
+  note                   String?
+  created_at             DateTime           @default(now()) @db.Timestamptz(6)
+  restaurants            restaurants        @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches               branches?          @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cash_shifts            cash_shifts        @relation(fields: [cash_shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cash_registers         cash_registers     @relation(fields: [cash_register_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  created_by             employees?         @relation("cash_movement_created_by", fields: [created_by_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([restaurant_id, created_at])
+  @@index([cash_shift_id, created_at])
+  @@index([movement_type, created_at])
+}
+
+model cash_closures {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id         String              @db.Uuid
+  branch_id             String?             @db.Uuid
+  cash_shift_id         String              @unique @db.Uuid
+  closed_by_employee_id String?             @db.Uuid
+  total_sales_cash      Decimal             @default(0) @db.Decimal(12, 2)
+  total_sales_card      Decimal             @default(0) @db.Decimal(12, 2)
+  total_sales_transfer  Decimal             @default(0) @db.Decimal(12, 2)
+  total_other_income    Decimal             @default(0) @db.Decimal(12, 2)
+  total_withdrawals     Decimal             @default(0) @db.Decimal(12, 2)
+  total_cash_expenses   Decimal             @default(0) @db.Decimal(12, 2)
+  expected_cash         Decimal             @db.Decimal(12, 2)
+  counted_cash          Decimal             @db.Decimal(12, 2)
+  difference            Decimal             @db.Decimal(12, 2)
+  status                cash_closure_status
+  note                  String?
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  restaurants           restaurants         @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches              branches?           @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cash_shifts           cash_shifts         @relation(fields: [cash_shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  closed_by             employees?          @relation("cash_closure_closed_by", fields: [closed_by_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([restaurant_id, created_at])
+}
+
+model audit_logs {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id     String      @db.Uuid
+  branch_id         String?     @db.Uuid
+  actor_user_id     String?     @db.Uuid
+  actor_employee_id String?     @db.Uuid
+  action            String
+  entity            String
+  entity_id         String?     @db.Uuid
+  metadata          Json?
+  ip                String?
+  user_agent        String?
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  restaurants       restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  branches          branches?   @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  users             users?      @relation(fields: [actor_user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  employees         employees?  @relation(fields: [actor_employee_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([restaurant_id, created_at])
+  @@index([entity, entity_id])
+  @@index([action, created_at])
 }

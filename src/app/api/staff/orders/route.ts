@@ -19,7 +19,10 @@ export async function GET() {
   const orders = await prisma.orders.findMany({
     where: {
       status: { in: ["pending", "preparing", "ready"] },
-      tables: { restaurant_id: session.restaurantId },
+      OR: [
+        { restaurant_id: session.restaurantId },
+        { tables: { restaurant_id: session.restaurantId } },
+      ],
     },
     select: {
       id: true,

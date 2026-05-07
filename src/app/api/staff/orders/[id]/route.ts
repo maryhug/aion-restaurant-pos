@@ -25,6 +25,7 @@ export async function PATCH(
     select: {
       id: true,
       status: true,
+      restaurant_id: true,
       tables: { select: { restaurant_id: true } },
     },
   });
@@ -33,7 +34,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
   }
 
-  if (order.tables?.restaurant_id !== session.restaurantId) {
+  const ownerRestaurantId = order.restaurant_id ?? order.tables?.restaurant_id;
+  if (ownerRestaurantId !== session.restaurantId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -58,6 +60,7 @@ export async function PATCH(
       select: {
         total: true,
         table_id: true,
+        restaurant_id: true,
         tables: { select: { restaurant_id: true } },
       },
     });
@@ -66,7 +69,9 @@ export async function PATCH(
         data: {
           order_id: id,
           restaurant_id:
-            fullOrder.tables?.restaurant_id ?? session.restaurantId,
+            fullOrder.restaurant_id ??
+            fullOrder.tables?.restaurant_id ??
+            session.restaurantId,
           table_id: fullOrder.table_id,
           total: fullOrder.total,
           payment_method: "cash",
