@@ -28,6 +28,7 @@ export async function GET() {
       id: true,
       status: true,
       created_at: true,
+      customer_name: true,
       tables: { select: { number: true } },
       order_items: {
         select: {
@@ -58,7 +59,7 @@ export async function GET() {
     return {
       id: o.id,
       tableLabel: o.tables ? `Mesa ${o.tables.number}` : "Mesa ?",
-      customerName: "",
+      customerName: o.customer_name ?? "",
       state: DB_TO_UI[o.status] ?? "pendiente",
       waitLabel,
       urgent,

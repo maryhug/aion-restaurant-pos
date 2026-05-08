@@ -10,12 +10,14 @@ type Props = {
   defaultOpen?: boolean;
   onClose?: () => void;
   inline?: boolean;
+  contextData?: Record<string, string>;
 };
 
 export default function Chat({
   defaultOpen = false,
   onClose,
   inline = false,
+  contextData,
 }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -56,7 +58,7 @@ export default function Chat({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, history }),
+        body: JSON.stringify({ message: userMessage, history, contextData }),
       });
 
       if (!res.body) throw new Error("No response body");
