@@ -29,6 +29,7 @@ function toExpense(row: {
   category: string;
   date: Date | string;
   restaurant_id: string;
+  branch_id?: string | null;
   user_id: string | null;
   created_at: Date | string;
 }): Expense {
@@ -42,6 +43,7 @@ function toExpense(row: {
         ? row.date.toISOString().slice(0, 10)
         : String(row.date),
     restaurant_id: row.restaurant_id,
+    branch_id: row.branch_id ?? null,
     user_id: row.user_id,
     created_at:
       row.created_at instanceof Date

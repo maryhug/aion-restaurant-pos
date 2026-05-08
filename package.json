@@ -10,9 +10,9 @@
     "prepare": "husky",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
+    "db:seed": "dotenv -e .env -- tsx prisma/seed.ts",
     "db:migrate": "prisma migrate deploy",
-    "db:backfill:admin": "dotenv -e .env.local -- tsx prisma/backfill-admin-multitenant.ts"
+    "db:backfill:admin": "dotenv -e .env -- tsx prisma/backfill-admin-multitenant.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",

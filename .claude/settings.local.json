@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ASUS\\\\WebstormProjects\\\\AionCami\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ASUS\\\\WebstormProjects\\\\AionCami\" -Recurse -Directory | Where-Object {$_.Name -eq 'app' -or $_.Name -eq 'src'} | Select-Object -ExpandProperty FullName)",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\ASUS\\\\WebstormProjects\\\\AionCami\\\\src\\\\app\\\\reservar\")",
+      "Bash(Write-Host \"reservar: $?\")",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(Move-Item *)",
+      "Bash(npx tsc *)",
+      "Bash(npx tsx *)",
+      "PowerShell(cd \"C:\\\\Users\\\\ASUS\\\\WebstormProjects\\\\AionCami\"; Get-ChildItem -Path \"src/app\" -Recurse -File | Where-Object { $_.Name -match \"^\\(page|layout|route\\)\\\\.\\(tsx?|js\\)$\" } | Select-Object -ExpandProperty FullName | Sort-Object)",
+      "Bash(Test-Path *)"
+    ]
+  }
+}
