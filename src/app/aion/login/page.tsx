@@ -21,11 +21,20 @@ type LoginApiSuccess = {
 
 type ApiError = { error?: string; details?: string };
 
+const DEMO_CREDENTIALS = {
+  cliente: { email: "cliente1@gmail.com", password: "Cliente1234!" },
+  staff: { email: "staff1@ilcafeto.com", password: "Staff1234!" },
+  admin: { email: "admin@ilcafeto.com", password: "ilcafeto2024!" },
+} as const;
+
 export default function AionLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoActive, setDemoActive] = useState<
+    keyof typeof DEMO_CREDENTIALS | null
+  >(null);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -36,32 +45,16 @@ export default function AionLoginPage() {
     }
   }, []);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function doLogin(loginEmail: string, loginPassword: string) {
     if (loading) return;
-
-    const normalizedEmail = email.trim().toLowerCase();
     setOk(null);
     setErr(null);
-
-    if (!normalizedEmail || !password) {
-      setErr("Email y contraseña son obligatorios.");
-      return;
-    }
-    if (!isValidEmail(normalizedEmail)) {
-      setErr("Ingresa un email válido.");
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password,
-        }),
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
 
       const data: unknown = await res.json();
@@ -85,7 +78,32 @@ export default function AionLoginPage() {
       setErr("No se pudo conectar con el servidor.");
     } finally {
       setLoading(false);
+      setDemoActive(null);
     }
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (loading) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      setErr("Email y contraseña son obligatorios.");
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      setErr("Ingresa un email válido.");
+      return;
+    }
+    await doLogin(normalizedEmail, password);
+  }
+
+  async function onDemo(role: keyof typeof DEMO_CREDENTIALS) {
+    if (loading) return;
+    const creds = DEMO_CREDENTIALS[role];
+    setEmail(creds.email);
+    setPassword(creds.password);
+    setDemoActive(role);
+    await doLogin(creds.email, creds.password);
   }
 
   return (
@@ -197,27 +215,28 @@ export default function AionLoginPage() {
           <div className="h-px flex-1 bg-stone-200" />
         </div>
         <div className="grid grid-cols-3 gap-2 text-xs">
-          <Link
-            className="rounded-xl border border-stone-200 py-2 text-center font-medium"
-            style={{ color: aion.colors.text }}
-            href="/aion/cliente/menu"
-          >
-            Cliente
-          </Link>
-          <Link
-            className="rounded-xl border border-stone-200 py-2 text-center font-medium"
-            style={{ color: aion.colors.text }}
-            href="/aion/staff"
-          >
-            Staff
-          </Link>
-          <Link
-            className="rounded-xl border border-stone-200 py-2 text-center font-medium"
-            style={{ color: aion.colors.text }}
-            href="/aion/admin"
-          >
-            Admin
-          </Link>
+          {(["cliente", "staff", "admin"] as const).map((role) => (
+            <button
+              key={role}
+              type="button"
+              disabled={loading}
+              onClick={() => void onDemo(role)}
+              className="rounded-xl border py-2 text-center font-medium capitalize transition-colors disabled:opacity-50"
+              style={
+                demoActive === role
+                  ? {
+                      borderColor: aion.colors.primary,
+                      background: "#FFF5F7",
+                      color: aion.colors.primary,
+                    }
+                  : { borderColor: "#e7e5e4", color: aion.colors.text }
+              }
+            >
+              {demoActive === role
+                ? "Entrando…"
+                : role.charAt(0).toUpperCase() + role.slice(1)}
+            </button>
+          ))}
         </div>
         <p
           className="mt-4 text-center text-sm"

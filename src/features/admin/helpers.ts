@@ -59,6 +59,6 @@ export function applyTenantTheme(branding: TenantBranding) {
   root.style.setProperty("--admin-soft", "#fafafa");
   root.style.setProperty("--admin-border", "#ece7ea");
   root.style.setProperty("--admin-text", "#24131a");
-  root.style.setProperty("--admin-sidebar-bg", "#6b0024");
-  root.style.setProperty("--admin-sidebar-bg-2", "#5c001f");
+  root.style.setProperty("--admin-sidebar-bg", branding.primary);
+  root.style.setProperty("--admin-sidebar-bg-2", branding.secondary);
 }

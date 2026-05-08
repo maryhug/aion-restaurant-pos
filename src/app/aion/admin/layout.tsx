@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
-import { aion } from "@/lib/aion/tokens";
+import { AdminTenantProvider } from "@/features/admin/tenant-context";
+import { AdminShell } from "@/features/admin/components/admin-shell";
 
-export default function AionAdminLayout({ children }: { children: ReactNode }) {
+export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="flex min-h-dvh"
-      style={{ background: aion.colors.pageBg, color: aion.colors.text }}
-    >
-      {children}
-    </div>
+    <AdminTenantProvider>
+      <AdminShell>{children}</AdminShell>
+    </AdminTenantProvider>
   );
 }

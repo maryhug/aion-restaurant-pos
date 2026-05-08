@@ -1,510 +1,560 @@
-# AION — Sistema POS Inteligente para Restaurantes
+# Aion — Sistema de Gestión para Restaurantes
 
-AION es una plataforma POS (Point of Sale) moderna para restaurantes construida con **Next.js 16**, **Prisma 7** y **PostgreSQL en Neon**. Permite gestionar menú, pedidos, reservas, gastos y ventas con vistas diferenciadas para administradores, staff y clientes.
+Plataforma **multi-tenant** SaaS construida con **Next.js 16 App Router**, **Prisma 7 + Neon PostgreSQL** y **JWT** (jose). Cada restaurante tiene su propio espacio de datos completamente aislado; un mismo despliegue sirve a todos los tenants.
+
+---
+
+## Tabla de contenidos
+
+1. [Stack tecnológico](#stack-tecnológico)
+2. [Arquitectura multi-tenant](#arquitectura-multi-tenant)
+3. [Requisitos previos](#requisitos-previos)
+4. [Variables de entorno](#variables-de-entorno)
+5. [Instalación y arranque](#instalación-y-arranque)
+6. [Scripts disponibles](#scripts-disponibles)
+7. [Credenciales de prueba](#credenciales-de-prueba)
+8. [Rutas de la aplicación](#rutas-de-la-aplicación)
+   - [Páginas públicas / auth](#páginas-públicas--auth)
+   - [Vista cliente](#vista-cliente)
+   - [Vista staff](#vista-staff)
+   - [Vista admin](#vista-admin)
+9. [API REST — referencia completa](#api-rest--referencia-completa)
+   - [Auth](#auth)
+   - [Cliente / público](#cliente--público)
+   - [Staff](#staff)
+   - [Admin](#admin-requiere-rol-admin--restaurantid-en-jwt)
+10. [Modelo de datos](#modelo-de-datos)
+11. [Autenticación y seguridad](#autenticación-y-seguridad)
+12. [Cómo agregar un nuevo restaurante](#cómo-agregar-un-nuevo-restaurante)
 
 ---
 
 ## Stack tecnológico
 
-| Tecnología | Versión | Rol en el proyecto |
-|---|---|---|
-| **Next.js** | 16.2.4 | Framework full-stack — App Router, Server Components, API Routes |
-| **React** | 19 | Interfaz de usuario |
-| **TypeScript** | 5 | Tipado estático en todo el proyecto |
-| **Prisma** | 7.7 | ORM — consultas a la base de datos |
-| **@prisma/adapter-pg** | 7.7 | Adaptador de Prisma 7 para node-postgres |
-| **PostgreSQL (Neon)** | — | Base de datos relacional serverless en la nube |
-| **node-postgres (pg)** | 8 | Driver de PostgreSQL para Node.js |
-| **bcryptjs** | 3 | Hash seguro de contraseñas |
-| **jose** | 6 | Generación y verificación de JWT (access + refresh tokens) |
-| **Tailwind CSS** | 4 | Estilos utilitarios |
-| **MongoDB + Mongoose** | 9 | Logs de interacciones con la IA |
-| **ESLint + Prettier** | 9 / 3 | Linting y formato de código |
-| **Husky + lint-staged** | — | Hooks de Git para calidad de código |
-| **tsx + dotenv-cli** | — | Ejecutar scripts TypeScript (seed, migraciones) |
+| Capa | Tecnología |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Base de datos | Neon PostgreSQL (serverless) |
+| ORM | Prisma 7.7 con `PrismaPg` adapter |
+| Auth | JWT vía `jose` — cookies HTTP-only |
+| Estilos | Tailwind CSS v4 |
+| Runtime | Node 22 |
+| Seed / scripts | `tsx` + `dotenv-cli` |
+
+---
+
+## Arquitectura multi-tenant
+
+```
+JWT (access token)
+  └─ id, email, role, restaurantId   ← se fija en el login
+         │
+         ▼
+requireAdmin()  →  filtra TODOS los queries por restaurantId
+         │
+         ▼
+Base de datos (Neon)
+  ├─ restaurants         (tenant raíz)
+  ├─ branches            (sedes del restaurante)
+  ├─ user_restaurants    (qué admin/staff pertenece a qué restaurante)
+  ├─ menu_items          → restaurant_id
+  ├─ tables              → restaurant_id
+  ├─ reservations        → table_id  (indirecto)
+  ├─ orders              → restaurant_id
+  ├─ sales               → restaurant_id
+  ├─ expenses            → restaurant_id
+  ├─ employees           → restaurant_id
+  ├─ cash_registers      → restaurant_id
+  ├─ cash_shifts         → restaurant_id
+  └─ cash_closures       → restaurant_id
+```
+
+**Regla clave:** el `restaurantId` se lee del JWT en el servidor. El cliente nunca puede falsificar a qué tenant pertenecen sus datos.
 
 ---
 
 ## Requisitos previos
 
-- **Node.js** 20 o superior
-- **npm** 10 o superior
-- Cuenta en **Neon** (PostgreSQL serverless) — ya configurado con las credenciales en `.env.local`
-
----
-
-## Instalación y primeros pasos
-
-```bash
-# 1. Instalar dependencias
-npm install
-
-# 2. Sincronizar el schema con la base de datos Neon
-npm run db:push
-
-# 3. Regenerar el cliente Prisma
-npm run db:generate
-
-# 4. Poblar la base de datos con datos iniciales
-npm run db:seed
-
-# 5. Iniciar el servidor de desarrollo
-npm run dev
-```
-
-La aplicación estará disponible en `http://localhost:3000`.
+- Node.js ≥ 20.6
+- Una base de datos Neon (o Postgres compatible)
+- npm / pnpm / yarn
 
 ---
 
 ## Variables de entorno
 
-### `.env.local` — leído por Next.js en runtime
+Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
-# ── Base de datos Neon (pooler) ───────────────────────────────────
-DATABASE_URL="postgresql://neondb_owner:<password>@<endpoint>-pooler.<region>.aws.neon.tech/neondb?sslmode=require"
-DIRECT_URL="postgresql://neondb_owner:<password>@<endpoint>-pooler.<region>.aws.neon.tech/neondb?sslmode=require"
+# Conexión principal (pooler de Neon para queries normales)
+DATABASE_URL="postgresql://usuario:password@host/dbname?sslmode=require"
 
-# ── JWT Access Token (duración: 15 minutos) ───────────────────────
-JWT_SECRET="<hex-128-chars>"
-JWT_ACCESS_SECRET="<mismo-valor>"
-JWT_ACCESS_EXPIRES_IN="15m"
+# Conexión directa (sin pooler — requerida por Prisma para migraciones y seed)
+DIRECT_URL="postgresql://usuario:password@host-directo/dbname?sslmode=require"
 
-# ── JWT Refresh Token (duración: 7 días) ──────────────────────────
-JWT_REFRESH_SECRET="<hex-128-chars-diferente>"
-JWT_REFRESH_EXPIRES_IN="7d"
+# Secretos JWT (mínimo 32 caracteres cada uno)
+JWT_ACCESS_SECRET="tu-secreto-de-access-muy-largo"
+JWT_REFRESH_SECRET="tu-secreto-de-refresh-muy-largo"
 ```
 
-### `.env` — leído por Prisma CLI (`prisma studio`, `db push`, etc.)
+---
 
-```env
-DATABASE_URL="<misma-url-que-arriba>"
-DIRECT_URL="<misma-url-que-arriba>"
+## Instalación y arranque
+
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Generar el cliente de Prisma
+npm run db:generate
+
+# 3. Aplicar el schema a la base de datos
+npm run db:push
+
+# 4. Cargar datos de prueba (dos restaurantes)
+npm run db:seed
+
+# 5. Arrancar el servidor de desarrollo
+npm run dev
 ```
 
-> Para generar secrets seguros:
-> ```bash
-> node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-> ```
+La app queda disponible en `http://localhost:3000`.
 
 ---
 
 ## Scripts disponibles
 
-```bash
-# Desarrollo
-npm run dev              # Servidor local en http://localhost:3000
-npm run build            # Build de producción
-npm run start            # Servidor de producción
-npm run lint             # Linting con ESLint
-
-# Base de datos
-npm run db:push          # Sincroniza el schema Prisma con la BD (sin crear migraciones)
-npm run db:generate      # Regenera @prisma/client
-npm run db:migrate       # Aplica migraciones en producción
-npm run db:seed          # Inserta datos iniciales (restaurante, usuarios, menú, mesas)
-
-# Herramientas
-npx prisma studio        # Interfaz visual de la BD → http://localhost:5555
-```
+| Script | Comando real | Descripción |
+|---|---|---|
+| `npm run dev` | `next dev` | Servidor de desarrollo con hot-reload |
+| `npm run build` | `next build` | Build de producción |
+| `npm run start` | `next start` | Sirve el build de producción |
+| `npm run lint` | `eslint` | Linter + Prettier |
+| `npm run db:generate` | `prisma generate` | Regenera el cliente Prisma |
+| `npm run db:push` | `prisma db push` | Sincroniza schema con la DB (sin migraciones) |
+| `npm run db:seed` | `dotenv -e .env -- tsx prisma/seed.ts` | Inserta datos de prueba (2 restaurantes) |
+| `npm run db:migrate` | `prisma migrate deploy` | Aplica migraciones en producción |
 
 ---
 
 ## Credenciales de prueba
 
-> Ejecuta `npm run db:seed` para que existan estos usuarios en la BD.
+El seed crea **dos restaurantes completamente independientes** para verificar el aislamiento multi-tenant.
 
-### Administrador
-| Campo | Valor |
+### Restaurante 1 — Il Cafeto (Bogotá)
+
+Branding: rojo borgoña `#581c22` · Sede: Centro
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Admin | `admin@ilcafeto.com` | `ilcafeto2024!` |
+| Staff (Mesero) | `staff1@ilcafeto.com` | `Staff1234!` |
+| Staff (Barista) | `staff2@ilcafeto.com` | `Staff1234!` |
+| Staff (Cajero) | `staff3@ilcafeto.com` | `Staff1234!` |
+
+### Restaurante 2 — La Cazuela (Medellín)
+
+Branding: verde `#14532d` · Sede: El Poblado
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Admin | `admin@lacazuela.com` | `lacazuela2024!` |
+| Staff (Cocinero) | `staff1@lacazuela.com` | `Staff1234!` |
+| Staff (Mesera) | `staff2@lacazuela.com` | `Staff1234!` |
+
+### Clientes (compartidos)
+
+| Email | Contraseña |
 |---|---|
-| Email | `admin@ilcafeto.com` |
-| Contraseña | `ilcafeto2024!` |
-| Rol | `admin` |
-| Acceso | `http://localhost:3000/aion/login` → redirige a `/aion/admin` |
+| `cliente1@gmail.com` | `Cliente1234!` |
+| `cliente2@gmail.com` | `Cliente1234!` |
+| `cliente3@gmail.com` | `Cliente1234!` |
 
-### Staff
-| Email | Contraseña | Nombre |
-|---|---|---|
-| `staff1@ilcafeto.com` | `Staff1234!` | Carlos Mesero |
-| `staff2@ilcafeto.com` | `Staff1234!` | Laura Barista |
-| `staff3@ilcafeto.com` | `Staff1234!` | Andrés Cajero |
-| Acceso | Login → redirige a `/aion/staff` | — |
-
-### Clientes
-| Email | Contraseña | Nivel fidelidad |
-|---|---|---|
-| `cliente1@gmail.com` | `Cliente1234!` | Explorer |
-| `cliente2@gmail.com` | `Cliente1234!` | Adventurer |
-| `cliente3@gmail.com` | `Cliente1234!` | Gourmet |
-| Acceso | Login → redirige a `/aion/cliente/menu` | — |
+> **Prueba de aislamiento:** entra con `admin@ilcafeto.com` → verás menú español, 12 mesas, 3 empleados. Cierra sesión, entra con `admin@lacazuela.com` → verás menú colombiano, 8 mesas, 2 empleados. Los datos nunca se mezclan.
 
 ---
 
 ## Rutas de la aplicación
 
-### Páginas públicas
+### Páginas públicas / auth
 
 | Ruta | Descripción |
 |---|---|
-| `/` | Página de inicio con chat IA integrado |
-| `/aion` | Landing de AION — acceso rápido por rol |
+| `/aion` | Landing / redirect según sesión activa |
 | `/aion/login` | Inicio de sesión (todos los roles) |
-| `/aion/registro` | Registro de nuevos clientes |
-| `/reservar` | Formulario de reserva de mesa sin necesidad de cuenta |
+| `/aion/registro` | Registro de nuevos clientes (crea `role: "customer"`) |
 
-### Vista Cliente — `/aion/cliente/`
+### Vista cliente
 
-| Ruta | Descripción | Datos |
-|---|---|---|
-| `/aion/cliente/menu` | Menú completo con filtro por categoría y búsqueda | BD — `menu_items` |
-| `/aion/cliente/plato/[id]` | Detalle de un plato: descripción, precio y botón agregar | BD — `menu_items` |
-| `/aion/cliente/carrito` | Resumen del carrito antes de confirmar | sessionStorage |
-| `/aion/cliente/reserva-hora` | Fecha, hora, mesa y datos para la preorden | BD — crea `reservations` + `orders` |
-| `/aion/cliente/confirmacion` | Código y resumen de la preorden confirmada | sessionStorage |
-| `/aion/cliente/pedido` | Estado en tiempo real del pedido (polling cada 10 s) | BD — `orders` |
+Prefijo: `/aion/cliente/`
 
-### Vista Staff — `/aion/staff`
-
-| Ruta | Descripción | Datos |
-|---|---|---|
-| `/aion/staff` | Kanban: Pendiente → Preparando → Listo. Polling cada 15 s. Los botones avanzan el estado en BD | BD — `orders` |
-
-### Vista Administrador — `/aion/admin/`
-
-| Ruta | Descripción | Datos |
-|---|---|---|
-| `/aion/admin` | Dashboard con KPIs reales: ventas del mes, pedidos, ticket promedio, clientes. Gráfica de 7 días y top 5 platos | BD — `sales`, `orders`, `users`, `order_items` |
-| `/aion/admin/menu` | Listado completo del menú con disponibilidad | BD — `menu_items` |
-| `/aion/admin/gastos` | Registro y reporte mensual de gastos operativos | BD — `expenses`, `sales` |
-
----
-
-## API Routes
-
-### Autenticación
-
-| Método | Endpoint | Descripción | Auth |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Login — devuelve access + refresh tokens en cookies httpOnly | No |
-| `POST` | `/api/auth/register` | Crea usuario con rol `customer` | No |
-| `POST` | `/api/auth/logout` | Borra cookies de sesión | No |
-| `POST` | `/api/auth/refresh` | Renueva el access token con el refresh token | No |
-
-### Restaurante
-
-| Método | Endpoint | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/restaurant` | Retorna el restaurante activo (nombre, ID, dirección) | No |
-
-### Reservas y mesas
-
-| Método | Endpoint | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/reservas/mesas` | Mesas disponibles. Params: `restaurantId`, `date`, `time`, `partySize` | No |
-| `POST` | `/api/reservas` | Crea reserva. Sin sesión crea usuario guest automáticamente | Opcional |
-| `GET` | `/api/reservas` | Lista reservas del restaurante activo | Admin/Staff |
-
-### Pedidos
-
-| Método | Endpoint | Descripción | Auth |
-|---|---|---|---|
-| `POST` | `/api/orders` | Crea orden con ítems del carrito para el restaurante | No |
-| `GET` | `/api/pedido?orderId=` | Estado en tiempo real de una orden | No |
-| `GET` | `/api/staff/orders` | Órdenes activas (pending/preparing/ready) | Staff/Admin |
-| `PATCH` | `/api/staff/orders/[id]` | Avanza estado de orden. Al entregar → crea venta automáticamente | Staff/Admin |
-
-### Gastos y reportes
-
-| Método | Endpoint | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/admin/expenses?year=&month=` | Lista gastos del mes | Admin |
-| `POST` | `/api/admin/expenses` | Registra un nuevo gasto | Admin |
-| `GET` | `/api/admin/expenses/report?year=&month=` | Reporte: ventas, costos, gastos y ganancia | Admin |
-
-### Otros
-
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `POST` | `/api/chat` | Chat con IA usando RAG sobre el menú del restaurante |
-| `GET` | `/api/test-mongo` | Prueba de conexión a MongoDB |
-
----
-
-## Estructura completa del proyecto
-
-```
-AION1.2/
-│
-├── prisma/
-│   ├── schema.prisma              # Modelos de todas las tablas de la BD
-│   ├── seed.ts                    # Datos iniciales: restaurante, usuarios, menú, mesas, órdenes, gastos
-│   ├── migrations/                # Historial de migraciones SQL
-│   └── prisma.config.ts           # Configuración Prisma 7 (datasource URL)
-│
-├── src/
-│   │
-│   ├── app/                       # Next.js App Router
-│   │   │
-│   │   ├── page.tsx               # Raíz "/" — página de bienvenida + chat IA
-│   │   │
-│   │   ├── reservar/
-│   │   │   └── page.tsx           # "/reservar" — formulario de reserva público
-│   │   │
-│   │   ├── aion/
-│   │   │   ├── page.tsx           # "/aion" — landing con accesos por rol
-│   │   │   ├── login/page.tsx     # "/aion/login" — formulario de login
-│   │   │   ├── registro/page.tsx  # "/aion/registro" — formulario de registro
-│   │   │   │
-│   │   │   ├── admin/
-│   │   │   │   ├── layout.tsx     # Layout del panel admin
-│   │   │   │   ├── page.tsx       # "/aion/admin" — dashboard KPIs reales
-│   │   │   │   ├── menu/page.tsx  # "/aion/admin/menu" — gestión del menú
-│   │   │   │   └── gastos/page.tsx # "/aion/admin/gastos" — gastos operativos
-│   │   │   │
-│   │   │   ├── staff/
-│   │   │   │   └── page.tsx       # "/aion/staff" — kanban de pedidos en tiempo real
-│   │   │   │
-│   │   │   └── cliente/
-│   │   │       ├── layout.tsx     # Proveedor del carrito (AionCartProvider)
-│   │   │       ├── menu/page.tsx          # "/aion/cliente/menu"
-│   │   │       ├── plato/[id]/page.tsx    # "/aion/cliente/plato/:id"
-│   │   │       ├── carrito/page.tsx       # "/aion/cliente/carrito"
-│   │   │       ├── reserva-hora/page.tsx  # "/aion/cliente/reserva-hora"
-│   │   │       ├── confirmacion/page.tsx  # "/aion/cliente/confirmacion"
-│   │   │       └── pedido/page.tsx        # "/aion/cliente/pedido"
-│   │   │
-│   │   └── api/
-│   │       ├── auth/
-│   │       │   ├── login/route.ts     # POST /api/auth/login
-│   │       │   ├── register/route.ts  # POST /api/auth/register
-│   │       │   ├── logout/route.ts    # POST /api/auth/logout
-│   │       │   └── refresh/route.ts   # POST /api/auth/refresh
-│   │       ├── restaurant/route.ts    # GET /api/restaurant
-│   │       ├── reservas/
-│   │       │   ├── route.ts           # GET + POST /api/reservas
-│   │       │   └── mesas/route.ts     # GET /api/reservas/mesas
-│   │       ├── orders/route.ts        # POST /api/orders
-│   │       ├── pedido/route.ts        # GET /api/pedido
-│   │       ├── staff/
-│   │       │   └── orders/
-│   │       │       ├── route.ts       # GET /api/staff/orders
-│   │       │       └── [id]/route.ts  # PATCH /api/staff/orders/:id
-│   │       ├── admin/
-│   │       │   └── expenses/
-│   │       │       ├── route.ts       # GET + POST /api/admin/expenses
-│   │       │       └── report/route.ts # GET /api/admin/expenses/report
-│   │       ├── chat/route.ts          # POST /api/chat
-│   │       └── test-mongo/route.ts    # GET /api/test-mongo
-│   │
-│   ├── lib/
-│   │   ├── prisma.ts              # Singleton de PrismaClient con adaptador PrismaPg (Neon)
-│   │   │
-│   │   ├── auth/
-│   │   │   ├── jwt.ts             # signAccessToken(), signRefreshToken(), verifyAccessToken()
-│   │   │   ├── session.ts         # getServerSession(), requireTenantSession()
-│   │   │   ├── validators.ts      # isValidEmail(), isStrongPassword(), isValidName()
-│   │   │   └── prisma-error.ts    # Mapeo errores Prisma → respuesta HTTP legible
-│   │   │
-│   │   ├── aion/
-│   │   │   ├── tokens.ts          # Design tokens: colores, radios, espaciado del sistema
-│   │   │   ├── types.ts           # Tipos TS: AionDish, AionStaffOrder, OrderState, AionKpi
-│   │   │   ├── menu-items.ts      # fetchAionMenuDishes(), fetchAionDishById() — Prisma
-│   │   │   ├── currency.ts        # formatCOP(n) — formato moneda colombiana (COP)
-│   │   │   └── preorder-storage.ts # savePreorderMeta(), loadPreorderMeta() — sessionStorage
-│   │   │
-│   │   ├── db/
-│   │   │   ├── expenses.ts        # createExpense(), getExpensesByMonth(), getMonthlyProfit()
-│   │   │   ├── reservations.ts    # getAvailableTables(), createReservation()
-│   │   │   ├── mongodb.ts         # Singleton de conexión a MongoDB
-│   │   │   └── models/
-│   │   │       ├── AiLog.ts       # Schema Mongoose: logs de interacciones IA
-│   │   │       └── Conversation.ts # Schema Mongoose: historial de conversaciones
-│   │   │
-│   │   └── ai/
-│   │       └── log.ts             # logAIInteraction() → guarda en MongoDB
-│   │
-│   ├── components/
-│   │   └── aion/
-│   │       ├── admin/
-│   │       │   ├── sidebar-nav.tsx       # Sidebar de navegación para el panel admin
-│   │       │   └── menu-table-toggle.tsx # Toggle ON/OFF de disponibilidad de platos
-│   │       │
-│   │       ├── auth/
-│   │       │   ├── logout-button.tsx     # Botón que llama POST /api/auth/logout
-│   │       │   └── password-field.tsx    # Input de contraseña con botón mostrar/ocultar
-│   │       │
-│   │       ├── client/
-│   │       │   ├── menu-page-client.tsx  # Lógica client: filtros y búsqueda del menú
-│   │       │   ├── menu-card.tsx         # Tarjeta de plato en el listado del menú
-│   │       │   └── dish-add-button.tsx   # Botón con contador para agregar al carrito
-│   │       │
-│   │       ├── providers/
-│   │       │   └── cart-state.tsx        # Context del carrito: useState + sessionStorage
-│   │       │
-│   │       ├── ui/
-│   │       │   ├── aion-dish-thumbnail.tsx # Avatar circular con iniciales del plato
-│   │       │   └── badge.tsx               # Badges de categoría y etiquetas dietéticas
-│   │       │
-│   │       └── icons.tsx                 # SVG icons: Search, Filter, QR, Clock, etc.
-│   │
-│   ├── types/
-│   │   └── database.ts            # Interfaces TS de todas las tablas + tipo Database
-│   │
-│   └── data/
-│       ├── aion-dishes.ts         # Labels de categorías para la UI (sin datos hardcodeados)
-│       └── dishes.ts              # Dataset de platos para el RAG del chat IA
-│
-├── public/                        # Archivos estáticos
-├── .env                           # DATABASE_URL para Prisma CLI (prisma studio, db:push)
-├── .env.local                     # Variables de entorno de la app (cargadas por Next.js)
-├── prisma.config.ts               # Configuración Prisma 7: datasource URL desde env
-├── next.config.ts                 # Configuración de Next.js
-├── menu_il_cafeto.csv             # Fuente original del menú de Il Cafeto (84 productos)
-├── tsconfig.json                  # Configuración TypeScript con alias @/
-└── eslint.config.mjs              # Configuración ESLint
-```
-
----
-
-## Base de datos — Modelos
-
-| Tabla | Descripción |
+| Ruta | Descripción |
 |---|---|
-| `restaurants` | Restaurantes de la plataforma |
-| `users` | Usuarios: `admin`, `staff`, `customer` |
-| `user_restaurants` | Relación usuario ↔ restaurante con rol (multi-tenant) |
-| `tables` | Mesas con capacidad, estado y QR |
-| `menu_items` | Platos del menú: precio, categoría, stock, costo, disponibilidad |
-| `orders` | Órdenes de pedido — ciclo completo de estados |
-| `order_items` | Líneas de cada orden (plato × cantidad × precio unitario) |
-| `reservations` | Reservas de mesa vinculadas a un usuario y fecha |
-| `sales` | Ventas cerradas — se crean automáticamente al entregar una orden |
-| `expenses` | Gastos operativos categorizados por mes |
-| `rewards` | Recompensas de fidelidad para clientes |
-| `user_levels` | Nivel gamificado del cliente (explorer → adventurer → gourmet → master) |
+| `/aion/cliente/menu` | Menú del restaurante con filtros por categoría |
+| `/aion/cliente/plato/[id]` | Detalle de un plato — descripción, precio, alérgenos |
+| `/aion/cliente/carrito` | Carrito de compras activo |
+| `/aion/cliente/pre-orden` | Revisión del pedido antes de confirmar |
+| `/aion/cliente/pedido` | Confirmación y resumen del pedido enviado |
+| `/aion/cliente/confirmacion` | Pantalla de confirmación post-pago |
+| `/aion/cliente/estado-pedido/[orderId]` | Estado en tiempo real del pedido |
+| `/aion/cliente/experiencia` | Gamificación: nivel XP, recompensas del usuario |
+| `/aion/cliente/reserva-hora` | Formulario de reserva de mesa |
+
+### Vista staff
+
+| Ruta | Descripción |
+|---|---|
+| `/aion/staff` | Panel principal — lista de órdenes activas (pendiente / preparando / listo) con tiempo de espera y alertas de urgencia |
+
+### Vista admin
+
+Prefijo: `/aion/admin/`  
+**Requiere:** cookie JWT con `role = "admin"` y `restaurantId` válido.
+
+| Ruta | Descripción |
+|---|---|
+| `/aion/admin` | **Dashboard** — KPIs: ventas hoy / semana / mes, ticket promedio, gastos del mes, beneficio estimado, ítem más vendido, gráfico de ventas 7 días, alertas de stock bajo y reservas del día |
+| `/aion/admin/pedidos` | Gestión de pedidos con tabla de estados y edición |
+| `/aion/admin/inventario` | CRUD completo de productos y servicios; activar / desactivar items; 3 pestañas: Productos / Servicios / Movimientos |
+| `/aion/admin/gastos` | Registro de gastos con categorías, gráfico por categoría, total del período |
+| `/aion/admin/empleados` | CRUD de empleados: nombre, cargo (datalist con 13 cargos predefinidos), tipo de contrato, salario, estado (activo / inactivo); tabla de historial de pagos |
+| `/aion/admin/mesas-reservas` | CRUD de mesas (número, capacidad, zona, estado) y reservas; board visual de ocupación |
+| `/aion/admin/cierre-caja` | Formulario de cierre con 6 campos editables, historial de cierres cerrados, modal de detalle por turno |
+| `/aion/admin/configuracion` | Info del restaurante, branding con color picker y preview live, ajustes (moneda / zona horaria / IVA / propina), gestión de usuarios del tenant |
 
 ---
 
-## Flujo de estados de una orden
+## API REST — referencia completa
 
-```
-BD:  pending ──→ preparing ──→ ready ──→ delivered
-                                              ↓
-UI:  pendiente → preparando  → listo → [crea sales automáticamente]
+### Auth
 
-Staff presiona "Iniciar"  → PATCH /api/staff/orders/:id → pending → preparing
-Staff presiona "Listo"    → PATCH /api/staff/orders/:id → preparing → ready
-Staff presiona "Entregar" → PATCH /api/staff/orders/:id → ready → delivered + INSERT sales
-```
+| Método | Ruta | Auth | Body | Respuesta |
+|---|---|---|---|---|
+| `POST` | `/api/auth/register` | Pública | `{ name, email, password, confirmPassword }` | `201 { user, accessToken, refreshToken }` + sets cookies |
+| `POST` | `/api/auth/login` | Pública | `{ email, password }` | `200 { user, accessToken, refreshToken }` + sets cookies |
+| `POST` | `/api/auth/logout` | Pública | — | `200` + borra ambas cookies |
+| `POST` | `/api/auth/refresh` | Cookie refresh | — | Nuevo access token en cookie |
 
----
-
-## Flujo completo de una preorden (vista cliente)
-
-```
-1. /aion/cliente/menu
-   └── Navega el menú, filtra por categoría, busca y agrega platos al carrito
-
-2. /aion/cliente/carrito
-   └── Revisa y ajusta cantidades antes de continuar
-
-3. /aion/cliente/reserva-hora
-   ├── Busca mesas disponibles → GET /api/reservas/mesas
-   ├── Selecciona mesa, fecha, hora y datos personales
-   ├── Al confirmar:
-   │   ├── POST /api/reservas  → crea reservación en BD
-   │   └── POST /api/orders    → crea orden con los ítems del carrito en BD
-   └── Guarda { orderRef, orderId, items... } en sessionStorage
-
-4. /aion/cliente/confirmacion
-   └── Muestra el código de reserva y el resumen de la preorden
-
-5. /aion/cliente/pedido
-   └── Polling cada 10 s → GET /api/pedido?orderId=...
-       Muestra timeline: recibido → cocina → listo → servido
-```
+**Validaciones en registro:**
+- Nombre ≥ 2 caracteres
+- Email RFC válido
+- Contraseña: mínimo 8 chars + mayúscula + minúscula + número
+- Contraseña y confirmación deben coincidir
 
 ---
 
-## Autenticación — JWT doble token
+### Cliente / público
 
-| Token | Cookie | Duración | Uso |
+| Método | Ruta | Auth | Params / Body | Respuesta |
+|---|---|---|---|---|
+| `GET` | `/api/restaurant` | Pública | `?restaurantId=` | Info del restaurante + menú disponible |
+| `POST` | `/api/orders` | Pública | `{ restaurantId, tableId?, branchId?, items[{ menuItemId, quantity, unitPrice }] }` | `201 { order }` |
+| `GET` | `/api/orders/[orderId]` | Pública | — | Estado e items del pedido |
+| `POST` | `/api/reservas` | Pública o sesión | `{ restaurantId, tableId, date, time, partySize, name, email }` | `200 { reservation }` |
+| `GET` | `/api/reservas` | Sesión staff/admin | — | Lista de reservas del restaurante |
+| `GET` | `/api/reservas/mesas` | Pública | `?restaurantId=` | Mesas disponibles para reservar |
+
+**Notas:**
+- `POST /api/orders` valida que todos los `menuItemId` pertenezcan al `restaurantId` y estén `available: true`.
+- `POST /api/reservas` resuelve el usuario: si hay sesión activa usa ese `userId`; si no, busca por email o crea un usuario guest sin contraseña.
+
+---
+
+### Staff
+
+| Método | Ruta | Auth | Body | Respuesta |
+|---|---|---|---|---|
+| `GET` | `/api/staff/orders` | Sesión staff/admin | — | Órdenes activas (pending/preparing/ready) con tiempo de espera y flag `urgent` |
+| `GET` | `/api/staff/orders/active` | Sesión staff/admin | — | Subset de órdenes más urgentes |
+| `GET` | `/api/staff/orders/[id]` | Sesión staff/admin | — | Detalle de una orden |
+| `PUT` | `/api/staff/orders/[id]/status` | Sesión staff/admin | `{ status: "preparing"\|"ready"\|"delivered" }` | `{ ok: true }` |
+
+---
+
+### Admin (requiere rol admin + restaurantId en JWT)
+
+Todos los endpoints admin pasan por `requireAdmin()`:
+1. Lee `aion_access_token` → verifica firma y expiración
+2. Si expiró → intenta con `aion_refresh_token`
+3. Comprueba `role === "admin"` y `restaurantId !== null`
+4. Retorna `403` si alguna condición falla
+
+#### Dashboard
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/admin/dashboard` | KPIs: ventas hoy/semana/mes, ticket promedio, total gastos del mes, beneficio estimado, ítem más vendido, ventas por día (últimos 7 días), alertas de stock bajo, count de reservas del día |
+
+#### Perfil del admin
+
+| Método | Ruta | Body | Descripción |
 |---|---|---|---|
-| Access Token | `aion_access_token` | 15 minutos | Autenticar cada request |
-| Refresh Token | `aion_refresh_token` | 7 días | Renovar el access token |
+| `GET` | `/api/admin/me` | — | `{ id, email, name }` del usuario autenticado |
+| `PUT` | `/api/admin/me` | `{ name }` | Actualiza el nombre del admin en la DB |
 
-Ambas cookies son `httpOnly` — inaccesibles desde JavaScript del navegador.
+#### Configuración del restaurante
 
-**Payload del JWT:**
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/configuracion` | — | Info del restaurante, branding, settings y branches activas |
+| `PUT` | `/api/admin/configuracion` | Ver abajo | Actualiza cualquier combinación de los tres bloques |
+
+Body PUT (todos los bloques son opcionales):
 ```json
 {
-  "id": "uuid-del-usuario",
-  "email": "user@email.com",
-  "role": "admin | staff | customer",
-  "restaurantId": "uuid-del-restaurante | null"
+  "restaurant": { "name": "...", "address": "...", "phone": "..." },
+  "settings":   { "currency": "COP", "timezone": "America/Bogota", "taxRate": 19, "tipSuggestion": 10 },
+  "branding":   { "primaryColor": "#581c22", "secondaryColor": "#7b4b52", "accentColor": "#d97706", "backgroundColor": "#ffe5e5" }
 }
 ```
 
-**Redireccionamiento por rol después del login:**
-- `admin` → `/aion/admin`
-- `staff` → `/aion/staff`
-- `customer` → `/aion/cliente/menu`
+#### Inventario (`menu_items`)
+
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/inventario` | — | Lista completa de items del restaurante (productos + servicios) |
+| `POST` | `/api/admin/inventario` | `{ name, category, price, unitCost?, stock?, minStock? }` | Crea un item. `category: "servicio"` lo trata como servicio |
+| `PUT` | `/api/admin/inventario` | `{ id, name, category, price, unitCost?, stock?, minStock?, available? }` | Edita. `available: false` desactiva; `available: true` reactiva |
+| `DELETE` | `/api/admin/inventario` | `{ id, soft?: true }` | `soft: true` → desactiva (soft delete). Sin `soft` → elimina físicamente |
+
+#### Gastos
+
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/gastos` | — | Lista + totales + desglose por categoría |
+| `POST` | `/api/admin/gastos` | `{ description, category, amount, date, branchId? }` | Crea un gasto asociado al restaurante |
+| `PUT` | `/api/admin/gastos` | `{ id, description, category, amount, date }` | Edita un gasto existente |
+| `DELETE` | `/api/admin/gastos` | `{ id }` | Elimina un gasto |
+
+Categorías sugeridas: `ingredientes`, `nomina`, `servicios`, `equipos`, `otros`
+
+#### Empleados
+
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/empleados` | — | Lista de empleados + nómina estimada del mes + conteo activos |
+| `POST` | `/api/admin/empleados` | `{ fullName, documentNumber?, roleTitle, contractType, salary?, status, hiredAt?, branchId? }` | Crea empleado |
+| `PUT` | `/api/admin/empleados` | `{ id, fullName, documentNumber?, roleTitle, contractType, salary?, status, hiredAt?, branchId? }` | Edita empleado |
+| `DELETE` | `/api/admin/empleados` | `{ id, activate: boolean }` | `activate: true` → activa; `activate: false` → desactiva (soft) |
+
+Tipos de contrato: `fijo`, `indefinido`, `prestacion`, `temporal`  
+Estados del empleado: `active`, `inactive`, `suspended`
+
+#### Mesas y Reservas
+
+Un solo endpoint con campo `entity` como discriminador.
+
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/mesas-reservas` | — | Mesas y reservas del restaurante |
+| `POST` | `/api/admin/mesas-reservas` | `{ entity: "table", number, capacity, zone?, status, branchId? }` | Crea mesa |
+| `POST` | `/api/admin/mesas-reservas` | `{ entity: "reservation", customerName, tableId, date, time, partySize, status, notes?, branchId? }` | Crea reserva |
+| `PUT` | `/api/admin/mesas-reservas` | `{ entity: "table", id, number, capacity, zone?, status }` | Edita mesa |
+| `PUT` | `/api/admin/mesas-reservas` | `{ entity: "reservation", id, tableId, date, time, partySize, status, customerName?, notes? }` | Edita reserva |
+| `DELETE` | `/api/admin/mesas-reservas` | `{ entity: "table", id }` | Elimina mesa |
+| `DELETE` | `/api/admin/mesas-reservas` | `{ entity: "reservation", id }` | Elimina reserva |
+
+Estados de mesa: `libre`, `ocupada`, `reservada`, `limpieza`  
+Estados de reserva: `pendiente`, `confirmada`, `cancelada`
+
+#### Cierre de Caja
+
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/cierre-caja` | — | `{ current: CashClosing\|null, closings: CashClosing[] }` |
+| `POST` | `/api/admin/cierre-caja` | `{ countedCash, note?, fecha?, branchId? }` | Registra cierre. Si hay turno abierto sin cierre → cierra ese turno. Si no hay turno abierto → crea turno y cierre manual |
+
+Lógica del estado del cierre:
+- `countedCash === expected` → `cuadrado`
+- `countedCash > expected` → `sobrante`
+- `countedCash < expected` → `faltante`
+
+#### Usuarios del tenant
+
+| Método | Ruta | Body | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/usuarios` | — | Lista de admin/staff vinculados al restaurante |
+| `POST` | `/api/admin/usuarios` | `{ name, email, password, role: "admin"\|"staff" }` | Crea usuario y lo vincula. Si el email ya existe, solo crea el vínculo |
+| `DELETE` | `/api/admin/usuarios` | `{ userId }` | Desvincula al usuario del restaurante. Un admin no puede eliminarse a sí mismo |
+
+#### Pedidos (vista admin)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/admin/orders` | Lista de pedidos del restaurante con items y totales |
 
 ---
 
-## Menú — Il Cafeto (84 productos)
+## Modelo de datos
 
-| Categoría | Cantidad |
-|---|---|
-| Cafés | 17 |
-| Sándwiches | 11 |
-| Bebidas | 14 |
-| Entradas | 7 |
-| Cócteles | 6 |
-| Cervezas | 5 |
-| Smoothies | 5 |
-| Vino | 4 |
-| Carnes | 6 |
-| Sangría | 3 |
-| Adiciones | 3 |
-| Postres | 2 |
-| Ensaladas | 1 |
+```
+users
+  id, name, email, password, role (customer | staff | admin)
 
-Los productos se importan desde `menu_il_cafeto.csv` al ejecutar `npm run db:seed`.
+user_restaurants                     ← membresía M-N (tenant ↔ usuario)
+  user_id, restaurant_id, role
+
+restaurants
+  id, name, address, phone
+
+branches
+  id, restaurant_id, name, city, address, is_active
+
+restaurant_settings                  ← 1:1 con restaurant
+  restaurant_id, currency, timezone, tax_rate, tip_suggested_pct,
+  cancellation_policy, reservation_tolerance_min, reservation_max_minutes
+
+restaurant_branding                  ← 1:1 con restaurant
+  restaurant_id, primary_color, secondary_color, accent_color,
+  background_color, logo_url
+
+menu_items
+  id, restaurant_id, name, category, price, cost_price,
+  stock, min_stock, available
+
+tables
+  id, restaurant_id, branch_id, number, capacity, zone, status
+
+reservations
+  id, user_id, table_id, restaurant_id, branch_id,
+  date, time, party_size, status, customer_name, notes
+
+orders
+  id, table_id, restaurant_id, branch_id, status, total, created_at
+
+order_items
+  id, order_id, menu_item_id, quantity, unit_price
+
+sales
+  id, order_id, restaurant_id, table_id, total, payment_method,
+  cash_received, change_given, created_at
+
+expenses
+  id, restaurant_id, branch_id, user_id, description,
+  category, amount, date
+
+employees
+  id, restaurant_id, branch_id, user_id, full_name, document_number,
+  role_title, contract_type, salary, status, hired_at
+
+employee_payments
+  id, restaurant_id, employee_id, gross_amount, net_amount,
+  payment_date, payment_method
+
+cash_registers
+  id, restaurant_id, branch_id, name, code, is_active
+
+cash_shifts
+  id, restaurant_id, branch_id, cash_register_id,
+  opened_by_employee_id, closed_by_employee_id,
+  opened_at, closed_at, opening_balance, status, note
+
+cash_closures
+  id, restaurant_id, branch_id, cash_shift_id, closed_by_employee_id,
+  total_sales_cash, total_sales_card, total_sales_transfer,
+  total_other_income, total_withdrawals, total_cash_expenses,
+  expected_cash, counted_cash, difference, status, note
+
+user_levels                          ← gamificación (1:1 con user)
+  user_id, level, xp, total_visits
+
+rewards
+  id, user_id, type, value, claimed
+```
 
 ---
 
-## Datos de prueba (generados por el seed)
+## Autenticación y seguridad
 
-El seed crea automáticamente:
+### Flujo de tokens
 
-- **1 restaurante**: Il Cafeto (Calle 93 #15-23, Bogotá)
-- **7 usuarios**: 1 admin + 3 staff + 3 clientes
-- **12 mesas**: números 1-8 (capacidad 4) y 9-12 (capacidad 6)
-- **84 ítems del menú**
-- **3 órdenes** de ejemplo con sus order_items
-- **2 ventas** registradas
-- **3 reservaciones** futuras
-- **5 gastos** con todas las categorías
-- **3 niveles de usuario** y **4 recompensas**
+```
+Login → POST /api/auth/login
+  ├─ Genera access token  (15 min)  → cookie: aion_access_token  (HTTP-only)
+  └─ Genera refresh token (7 días)  → cookie: aion_refresh_token (HTTP-only)
+
+Petición a API admin:
+  requireAdmin(req)
+    1. Lee aion_access_token → verifica firma + expiración
+    2. Si expiró → lee aion_refresh_token → verifica
+    3. Comprueba role === "admin" && restaurantId !== null
+    4. Retorna { id, email, role, restaurantId }  o  403
+
+Logout → POST /api/auth/logout
+  └─ Borra ambas cookies (maxAge: 0)
+```
+
+### Payload del JWT
+
+```typescript
+{
+  id:           string          // UUID del usuario
+  email:        string
+  role:         "customer" | "staff" | "admin"
+  restaurantId: string | null   // null si el usuario no tiene restaurante asignado
+}
+```
+
+### Por qué aparece 403 con `restaurantId: null`
+
+El `restaurantId` se resuelve **en el momento del login** consultando `user_restaurants`. Si el usuario existe en la DB pero no tiene fila en esa tabla, el JWT tiene `restaurantId: null` y `requireAdmin` retorna 403.
+
+**Solución:**
+1. Ejecutar `npm run db:seed` (crea el vínculo si falta)
+2. Cerrar sesión y volver a iniciar sesión para obtener un JWT nuevo con el `restaurantId` correcto
 
 ---
 
-## Notas técnicas importantes
+## Cómo agregar un nuevo restaurante
 
-### Prisma 7 — cambios respecto a versiones anteriores
+### Opción 1 — Via seed (desarrollo / pruebas)
 
-- `url` y `directUrl` **ya no van en `schema.prisma`** — se configuran en `prisma.config.ts`
-- Se usa el adaptador `PrismaPg` (driver de node-postgres) en lugar de la conexión directa
-- El cliente se inicializa con `new PrismaClient({ adapter })` — ver `src/lib/prisma.ts`
+Agrega en `prisma/seed.ts` dentro de `main()`:
 
-### Neon — conexión desde node-postgres
+```typescript
+const miRestaurante = await prisma.restaurants.create({
+  data: { name: "Mi Restaurante", address: "...", phone: "..." }
+});
+const admin = await upsertUser("admin@mirestaurante.com", "Admin", "Pass1234!", "admin");
+await linkToRestaurant(admin.id, miRestaurante.id, "admin");
+```
 
-- El parámetro `channel_binding=require` no es soportado por `pg` — se elimina automáticamente en `src/lib/prisma.ts`
-- Se usa `ssl: { rejectUnauthorized: false }` para conexiones a Neon y Supabase
+Luego: `npm run db:seed`
 
-### Regla principal de arquitectura
+### Opción 2 — Agregar staff desde el panel admin
 
-> Los componentes `"use client"` **nunca** llaman a Prisma directamente.  
-> Toda consulta a la BD desde el browser va a través de un **API route**.  
-> Los Server Components sí pueden llamar Prisma directamente.
+Un admin existente puede ir a `/aion/admin/configuracion` → sección **Usuarios** → **Agregar usuario**, ingresar nombre, email, contraseña temporal y rol (`admin` o `staff`). El sistema crea la cuenta, la hashea y la vincula automáticamente al restaurante del admin que la crea.
+
+### Opción 3 — Producción (onboarding manual)
+
+1. Crear el restaurante en la DB
+2. Crear el usuario admin con `role: "admin"` en `users`
+3. Crear la fila en `user_restaurants` con `role: "admin"`
+4. El admin inicia sesión → su JWT ya tiene el `restaurantId` correcto
+5. Desde el panel puede personalizar branding, agregar staff y configurar sedes
+
+---
+
+## Datos de prueba incluidos en el seed
+
+### Il Cafeto
+
+- 74 items de menú (Smoothies, Cervezas, Cócteles, Sangría, Vino, Entradas, Cafés, Postres, Sándwiches, Carnes, Ensaladas, Adiciones, Bebidas)
+- 12 mesas (capacidad 4–6 personas)
+- 3 empleados con historial de pagos
+- 5 gastos de mayo 2026
+- 3 órdenes + 2 ventas históricas
+- 3 reservas futuras
+- 1 caja con 1 turno cerrado + cierre + 1 turno abierto
+- Branding rojo borgoña, IVA 19%, moneda COP
+
+### La Cazuela
+
+- 17 items de menú (Sopas, Platos fuertes, Entradas, Bebidas, Postres)
+- 8 mesas (capacidad 4–6 personas)
+- 2 empleados con historial de pagos
+- 3 gastos de mayo 2026
+- 2 órdenes + 2 ventas históricas
+- 2 reservas futuras
+- 1 caja con 1 turno cerrado + cierre + 1 turno abierto
+- Branding verde, IVA 19%, moneda COP

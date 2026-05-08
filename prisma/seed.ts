@@ -126,7 +126,12 @@ async function upsertUser(
   role: string,
 ) {
   const existing = await prisma.users.findUnique({ where: { email } });
-  if (existing) return existing;
+  if (existing) {
+    if (existing.role !== role) {
+      return prisma.users.update({ where: { email }, data: { role } });
+    }
+    return existing;
+  }
   const hashed = await bcrypt.hash(password, 12);
   return prisma.users.create({ data: { email, name, password: hashed, role } });
 }
@@ -564,12 +569,697 @@ async function main() {
     console.log(`Gastos existentes: ${existingExpenses}`);
   }
 
+  // ── 11. Sede (branch) ────────────────────────────────────────────────────
+  let branch = await prisma.branches.findFirst({
+    where: { restaurant_id: restaurant.id, name: "Sede Centro" },
+  });
+  if (!branch) {
+    branch = await prisma.branches.create({
+      data: {
+        restaurant_id: restaurant.id,
+        name: "Sede Centro",
+        city: "Bogotá",
+        address: "Calle 93 #15-23, Bogotá",
+        is_active: true,
+      },
+    });
+    console.log("Sede Centro creada");
+  } else {
+    console.log("Sede Centro existente");
+  }
+
+  // ── 12. Empleados ─────────────────────────────────────────────────────────
+  const existingEmployees = await prisma.employees.count({
+    where: { restaurant_id: restaurant.id },
+  });
+  let emp1Id: string, emp2Id: string, emp3Id: string;
+  if (existingEmployees === 0) {
+    const [emp1, emp2, emp3] = await Promise.all([
+      prisma.employees.create({
+        data: {
+          restaurant_id: restaurant.id,
+          branch_id: branch.id,
+          user_id: staffUser1.id,
+          full_name: staffUser1.name,
+          document_number: "1020045566",
+          role_title: "Mesero",
+          contract_type: "indefinido",
+          salary: 1850000,
+          status: "active",
+          hired_at: new Date("2024-02-12"),
+        },
+      }),
+      prisma.employees.create({
+        data: {
+          restaurant_id: restaurant.id,
+          branch_id: branch.id,
+          user_id: staffUser2.id,
+          full_name: staffUser2.name,
+          document_number: "1019982233",
+          role_title: "Barista",
+          contract_type: "fijo",
+          salary: 2100000,
+          status: "active",
+          hired_at: new Date("2023-11-10"),
+        },
+      }),
+      prisma.employees.create({
+        data: {
+          restaurant_id: restaurant.id,
+          branch_id: branch.id,
+          user_id: staffUser3.id,
+          full_name: staffUser3.name,
+          document_number: "43888771",
+          role_title: "Cajero",
+          contract_type: "prestacion",
+          salary: 2500000,
+          status: "active",
+          hired_at: new Date("2022-08-05"),
+        },
+      }),
+    ]);
+    emp1Id = emp1.id;
+    emp2Id = emp2.id;
+    emp3Id = emp3.id;
+    console.log("3 empleados creados");
+
+    const paymentRecords = [
+      { employeeId: emp1Id, amount: 1850000, date: new Date("2026-04-30") },
+      { employeeId: emp1Id, amount: 1850000, date: new Date("2026-03-31") },
+      { employeeId: emp2Id, amount: 2100000, date: new Date("2026-04-30") },
+      { employeeId: emp2Id, amount: 2100000, date: new Date("2026-03-31") },
+      { employeeId: emp3Id, amount: 2500000, date: new Date("2026-03-31") },
+    ];
+    for (const p of paymentRecords) {
+      await prisma.employee_payments.create({
+        data: {
+          restaurant_id: restaurant.id,
+          employee_id: p.employeeId,
+          gross_amount: p.amount,
+          net_amount: p.amount,
+          payment_date: p.date,
+          payment_method: "transfer",
+        },
+      });
+    }
+    console.log("5 pagos de empleados creados");
+  } else {
+    console.log(`Empleados existentes: ${existingEmployees}`);
+    const firstEmp = await prisma.employees.findFirst({
+      where: { restaurant_id: restaurant.id },
+      orderBy: { hired_at: "asc" },
+    });
+    emp3Id = firstEmp!.id;
+    emp2Id = firstEmp!.id;
+    emp1Id = firstEmp!.id;
+  }
+
+  // ── 13. Caja, turnos y cierres ───────────────────────────────────────────
+  const existingRegisters = await prisma.cash_registers.count({
+    where: { restaurant_id: restaurant.id },
+  });
+  if (existingRegisters === 0) {
+    const register = await prisma.cash_registers.create({
+      data: {
+        restaurant_id: restaurant.id,
+        branch_id: branch.id,
+        name: "Caja Principal",
+        code: "CAJA-01",
+        is_active: true,
+      },
+    });
+    console.log("Caja Principal creada");
+
+    // Closed shift (previous day)
+    const closedShift = await prisma.cash_shifts.create({
+      data: {
+        restaurant_id: restaurant.id,
+        branch_id: branch.id,
+        cash_register_id: register.id,
+        opened_by_employee_id: emp3Id,
+        closed_by_employee_id: emp3Id,
+        opened_at: new Date("2026-05-06T15:00:00Z"),
+        closed_at: new Date("2026-05-06T22:58:00Z"),
+        opening_balance: 200000,
+        expected_cash: 1330000,
+        counted_cash: 1320000,
+        difference: -10000,
+        status: "closed",
+        note: "Sin novedades",
+      },
+    });
+
+    await prisma.cash_closures.create({
+      data: {
+        restaurant_id: restaurant.id,
+        branch_id: branch.id,
+        cash_shift_id: closedShift.id,
+        closed_by_employee_id: emp3Id,
+        total_sales_cash: 1380000,
+        total_sales_card: 2050000,
+        total_sales_transfer: 420000,
+        total_other_income: 50000,
+        total_withdrawals: 180000,
+        total_cash_expenses: 120000,
+        expected_cash: 1330000,
+        counted_cash: 1320000,
+        difference: -10000,
+        status: "faltante",
+        note: "Sin novedades",
+      },
+    });
+
+    // Open shift (today)
+    await prisma.cash_shifts.create({
+      data: {
+        restaurant_id: restaurant.id,
+        branch_id: branch.id,
+        cash_register_id: register.id,
+        opened_by_employee_id: emp3Id,
+        opened_at: new Date("2026-05-07T08:00:00Z"),
+        opening_balance: 200000,
+        status: "open",
+      },
+    });
+    console.log("1 turno cerrado + cierre + 1 turno abierto creados");
+  } else {
+    console.log(`Registros de caja existentes: ${existingRegisters}`);
+  }
+
+  // ── 14. Configuración y branding ─────────────────────────────────────────
+  const [existingSettings, existingBranding] = await Promise.all([
+    prisma.restaurant_settings.findUnique({
+      where: { restaurant_id: restaurant.id },
+    }),
+    prisma.restaurant_branding.findUnique({
+      where: { restaurant_id: restaurant.id },
+    }),
+  ]);
+  if (!existingSettings) {
+    await prisma.restaurant_settings.create({
+      data: {
+        restaurant_id: restaurant.id,
+        currency: "COP",
+        timezone: "America/Bogota",
+        tax_rate: 19,
+        tip_suggested_pct: 10,
+        cancellation_policy: "Hasta 2 horas antes sin costo",
+        reservation_tolerance_min: 15,
+        reservation_max_minutes: 120,
+      },
+    });
+    console.log("Configuración creada");
+  }
+  if (!existingBranding) {
+    await prisma.restaurant_branding.create({
+      data: {
+        restaurant_id: restaurant.id,
+        primary_color: "#581c22",
+        secondary_color: "#7b4b52",
+        accent_color: "#d97706",
+        background_color: "#ffe5e5",
+      },
+    });
+    console.log("Branding creado");
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RESTAURANTE 2 — La Cazuela (para probar multi-tenant)
+  // ═══════════════════════════════════════════════════════════════════════════
+  console.log(
+    "\n── Restaurante 2: La Cazuela ──────────────────────────────────",
+  );
+
+  let restaurant2 = await prisma.restaurants.findFirst({
+    where: { name: "La Cazuela" },
+  });
+  if (!restaurant2) {
+    restaurant2 = await prisma.restaurants.create({
+      data: {
+        name: "La Cazuela",
+        address: "Carrera 7 #45-12, Medellín",
+        phone: "604-2341567",
+      },
+    });
+    console.log(`Restaurante 2 creado: ${restaurant2.id}`);
+  } else {
+    console.log(`Restaurante 2 existente: ${restaurant2.id}`);
+  }
+
+  const admin2 = await upsertUser(
+    "admin@lacazuela.com",
+    "Admin La Cazuela",
+    "lacazuela2024!",
+    "admin",
+  );
+  const staff2a = await upsertUser(
+    "staff1@lacazuela.com",
+    "Pedro Cocinero",
+    "Staff1234!",
+    "staff",
+  );
+  const staff2b = await upsertUser(
+    "staff2@lacazuela.com",
+    "Diana Mesera",
+    "Staff1234!",
+    "staff",
+  );
+
+  await linkToRestaurant(admin2.id, restaurant2.id, "admin");
+  await linkToRestaurant(staff2a.id, restaurant2.id, "staff");
+  await linkToRestaurant(staff2b.id, restaurant2.id, "staff");
+
+  const customer2a = await upsertUser(
+    "cliente4@gmail.com",
+    "Rosa López",
+    "Cliente1234!",
+    "customer",
+  );
+  const customer2b = await upsertUser(
+    "cliente5@gmail.com",
+    "Víctor Peña",
+    "Cliente1234!",
+    "customer",
+  );
+
+  console.log("Usuarios y membresías Restaurante 2 listos");
+
+  // Sede
+  let branch2 = await prisma.branches.findFirst({
+    where: { restaurant_id: restaurant2.id },
+  });
+  if (!branch2) {
+    branch2 = await prisma.branches.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        name: "Sede El Poblado",
+        city: "Medellín",
+        address: "Carrera 7 #45-12, Medellín",
+        is_active: true,
+      },
+    });
+    console.log("Sede El Poblado creada");
+  }
+
+  // Mesas
+  const existingTables2 = await prisma.tables.count({
+    where: { restaurant_id: restaurant2.id },
+  });
+  if (existingTables2 === 0) {
+    await prisma.tables.createMany({
+      data: Array.from({ length: 8 }, (_, i) => ({
+        restaurant_id: restaurant2.id,
+        number: i + 1,
+        capacity: i < 5 ? 4 : 6,
+        status: "available",
+      })),
+    });
+    console.log("8 mesas Restaurante 2 creadas");
+  }
+
+  // Menú
+  const menu2Items = [
+    { category: "Sopas", name: "Sancocho de gallina", price: 28000 },
+    { category: "Sopas", name: "Ajiaco bogotano", price: 26000 },
+    { category: "Sopas", name: "Mondongo", price: 24000 },
+    { category: "Platos fuertes", name: "Bandeja paisa", price: 38000 },
+    { category: "Platos fuertes", name: "Fritanga", price: 35000 },
+    { category: "Platos fuertes", name: "Cazuela de mariscos", price: 42000 },
+    { category: "Platos fuertes", name: "Trucha al ajillo", price: 36000 },
+    { category: "Platos fuertes", name: "Chuleta de cerdo", price: 34000 },
+    { category: "Entradas", name: "Empanadas x3", price: 12000 },
+    { category: "Entradas", name: "Patacones con hogao", price: 14000 },
+    { category: "Entradas", name: "Chicharrón", price: 18000 },
+    { category: "Bebidas", name: "Jugo de lulo", price: 8000 },
+    { category: "Bebidas", name: "Jugo de maracuyá", price: 8000 },
+    { category: "Bebidas", name: "Aguapanela", price: 5000 },
+    { category: "Bebidas", name: "Cerveza Águila", price: 7000 },
+    { category: "Postres", name: "Arroz con leche", price: 10000 },
+    { category: "Postres", name: "Natilla", price: 10000 },
+  ] as const;
+
+  let menu2Created = 0;
+  for (const item of menu2Items) {
+    const exists = await prisma.menu_items.findFirst({
+      where: { restaurant_id: restaurant2.id, name: item.name },
+    });
+    if (!exists) {
+      await prisma.menu_items.create({
+        data: {
+          restaurant_id: restaurant2.id,
+          name: item.name,
+          price: item.price,
+          category: item.category,
+          available: true,
+        },
+      });
+      menu2Created++;
+    }
+  }
+  console.log(`Menú Restaurante 2: ${menu2Created} items creados`);
+
+  // Empleados
+  const existingEmployees2 = await prisma.employees.count({
+    where: { restaurant_id: restaurant2.id },
+  });
+  let emp2aId: string;
+  if (existingEmployees2 === 0) {
+    const empA = await prisma.employees.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        branch_id: branch2.id,
+        user_id: staff2a.id,
+        full_name: staff2a.name,
+        document_number: "32112344",
+        role_title: "Cocinero",
+        contract_type: "indefinido",
+        salary: 2200000,
+        status: "active",
+        hired_at: new Date("2023-06-01"),
+      },
+    });
+    const empB = await prisma.employees.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        branch_id: branch2.id,
+        user_id: staff2b.id,
+        full_name: staff2b.name,
+        document_number: "45678901",
+        role_title: "Mesera",
+        contract_type: "fijo",
+        salary: 1900000,
+        status: "active",
+        hired_at: new Date("2024-01-15"),
+      },
+    });
+    emp2aId = empA.id;
+    console.log("2 empleados Restaurante 2 creados");
+
+    await prisma.employee_payments.createMany({
+      data: [
+        {
+          restaurant_id: restaurant2.id,
+          employee_id: empA.id,
+          gross_amount: 2200000,
+          net_amount: 2200000,
+          payment_date: new Date("2026-04-30"),
+          payment_method: "transfer",
+        },
+        {
+          restaurant_id: restaurant2.id,
+          employee_id: empB.id,
+          gross_amount: 1900000,
+          net_amount: 1900000,
+          payment_date: new Date("2026-04-30"),
+          payment_method: "transfer",
+        },
+      ],
+    });
+  } else {
+    const firstEmp2 = await prisma.employees.findFirst({
+      where: { restaurant_id: restaurant2.id },
+    });
+    emp2aId = firstEmp2!.id;
+    console.log(`Empleados Restaurante 2 existentes: ${existingEmployees2}`);
+  }
+
+  // Gastos
+  const existingExpenses2 = await prisma.expenses.count({
+    where: { restaurant_id: restaurant2.id },
+  });
+  if (existingExpenses2 === 0) {
+    await prisma.expenses.createMany({
+      data: [
+        {
+          restaurant_id: restaurant2.id,
+          user_id: admin2.id,
+          description: "Compra carnes y mariscos",
+          amount: 520000,
+          category: "ingredientes",
+          date: new Date("2026-05-03"),
+        },
+        {
+          restaurant_id: restaurant2.id,
+          user_id: admin2.id,
+          description: "Gas industrial",
+          amount: 130000,
+          category: "servicios",
+          date: new Date("2026-05-04"),
+        },
+        {
+          restaurant_id: restaurant2.id,
+          user_id: admin2.id,
+          description: "Pago nómina mayo",
+          amount: 4100000,
+          category: "nomina",
+          date: new Date("2026-05-01"),
+        },
+      ],
+    });
+    console.log("3 gastos Restaurante 2 creados");
+  }
+
+  // Caja y cierres
+  const existingRegisters2 = await prisma.cash_registers.count({
+    where: { restaurant_id: restaurant2.id },
+  });
+  if (existingRegisters2 === 0) {
+    const register2 = await prisma.cash_registers.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        branch_id: branch2.id,
+        name: "Caja Poblado",
+        code: "CAZA-01",
+        is_active: true,
+      },
+    });
+
+    const closedShift2 = await prisma.cash_shifts.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        branch_id: branch2.id,
+        cash_register_id: register2.id,
+        opened_by_employee_id: emp2aId,
+        closed_by_employee_id: emp2aId,
+        opened_at: new Date("2026-05-06T14:00:00Z"),
+        closed_at: new Date("2026-05-06T23:00:00Z"),
+        opening_balance: 300000,
+        expected_cash: 1980000,
+        counted_cash: 2000000,
+        difference: 20000,
+        status: "closed",
+        note: "Cierre sin novedad",
+      },
+    });
+
+    await prisma.cash_closures.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        branch_id: branch2.id,
+        cash_shift_id: closedShift2.id,
+        closed_by_employee_id: emp2aId,
+        total_sales_cash: 1980000,
+        total_sales_card: 1200000,
+        total_sales_transfer: 600000,
+        total_other_income: 0,
+        total_withdrawals: 0,
+        total_cash_expenses: 300000,
+        expected_cash: 1980000,
+        counted_cash: 2000000,
+        difference: 20000,
+        status: "sobrante",
+        note: "Cierre sin novedad",
+      },
+    });
+
+    await prisma.cash_shifts.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        branch_id: branch2.id,
+        cash_register_id: register2.id,
+        opened_by_employee_id: emp2aId,
+        opened_at: new Date("2026-05-07T09:00:00Z"),
+        opening_balance: 300000,
+        status: "open",
+      },
+    });
+    console.log("Caja Restaurante 2 creada");
+  }
+
+  // Ventas
+  const allTables2 = await prisma.tables.findMany({
+    where: { restaurant_id: restaurant2.id },
+    orderBy: { number: "asc" },
+  });
+  const allMenu2 = await prisma.menu_items.findMany({
+    where: { restaurant_id: restaurant2.id },
+  });
+  const pick2 = (name: string) =>
+    allMenu2.find((m) => m.name === name) ?? allMenu2[0];
+
+  const existingSales2 = await prisma.sales.count({
+    where: { restaurant_id: restaurant2.id },
+  });
+  if (existingSales2 === 0 && allTables2.length > 0 && allMenu2.length > 0) {
+    const bandeja = pick2("Bandeja paisa");
+    const lulo = pick2("Jugo de lulo");
+    const order2a = await prisma.orders.create({
+      data: {
+        table_id: allTables2[0].id,
+        status: "delivered",
+        total: Number(bandeja.price) + Number(lulo.price),
+        created_at: new Date("2026-05-05T12:30:00Z"),
+      },
+    });
+    await prisma.order_items.createMany({
+      data: [
+        {
+          order_id: order2a.id,
+          menu_item_id: bandeja.id,
+          quantity: 2,
+          unit_price: bandeja.price,
+        },
+        {
+          order_id: order2a.id,
+          menu_item_id: lulo.id,
+          quantity: 2,
+          unit_price: lulo.price,
+        },
+      ],
+    });
+    await prisma.sales.create({
+      data: {
+        order_id: order2a.id,
+        restaurant_id: restaurant2.id,
+        table_id: allTables2[0].id,
+        total: order2a.total,
+        payment_method: "cash",
+        cash_received: 100000,
+        change_given: 100000 - Number(order2a.total),
+        created_at: new Date("2026-05-05T13:00:00Z"),
+      },
+    });
+
+    const cazuela = pick2("Cazuela de mariscos");
+    const aguapanela = pick2("Aguapanela");
+    const order2b = await prisma.orders.create({
+      data: {
+        table_id: allTables2[1].id,
+        status: "delivered",
+        total: Number(cazuela.price) * 2 + Number(aguapanela.price) * 2,
+        created_at: new Date("2026-05-06T19:00:00Z"),
+      },
+    });
+    await prisma.order_items.createMany({
+      data: [
+        {
+          order_id: order2b.id,
+          menu_item_id: cazuela.id,
+          quantity: 2,
+          unit_price: cazuela.price,
+        },
+        {
+          order_id: order2b.id,
+          menu_item_id: aguapanela.id,
+          quantity: 2,
+          unit_price: aguapanela.price,
+        },
+      ],
+    });
+    await prisma.sales.create({
+      data: {
+        order_id: order2b.id,
+        restaurant_id: restaurant2.id,
+        table_id: allTables2[1].id,
+        total: order2b.total,
+        payment_method: "card",
+        created_at: new Date("2026-05-06T20:00:00Z"),
+      },
+    });
+    console.log("2 ventas Restaurante 2 creadas");
+  }
+
+  // Reservas
+  const existingRes2 = await prisma.reservations.count({
+    where: { tables: { restaurant_id: restaurant2.id } },
+  });
+  if (existingRes2 === 0 && allTables2.length >= 3) {
+    await prisma.reservations.createMany({
+      data: [
+        {
+          user_id: customer2a.id, // ← Nuevo cliente para restaurante 2
+          table_id: allTables2[2].id,
+          date: new Date("2026-05-09"),
+          time: new Date("1970-01-01T12:00:00"),
+          party_size: 4,
+          status: "confirmed",
+        },
+        {
+          user_id: customer2b.id, // ← Nuevo cliente para restaurante 2
+          table_id: allTables2[3].id,
+          date: new Date("2026-05-10"),
+          time: new Date("1970-01-01T19:00:00"),
+          party_size: 6,
+          status: "pending",
+        },
+      ],
+    });
+    console.log("2 reservas Restaurante 2 creadas");
+  }
+
+  // Configuración y branding
+  const [settings2, branding2] = await Promise.all([
+    prisma.restaurant_settings.findUnique({
+      where: { restaurant_id: restaurant2.id },
+    }),
+    prisma.restaurant_branding.findUnique({
+      where: { restaurant_id: restaurant2.id },
+    }),
+  ]);
+  if (!settings2) {
+    await prisma.restaurant_settings.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        currency: "COP",
+        timezone: "America/Bogota",
+        tax_rate: 19,
+        tip_suggested_pct: 10,
+        cancellation_policy: "Sin cancelaciones el mismo día",
+        reservation_tolerance_min: 10,
+        reservation_max_minutes: 90,
+      },
+    });
+  }
+  if (!branding2) {
+    await prisma.restaurant_branding.create({
+      data: {
+        restaurant_id: restaurant2.id,
+        primary_color: "#14532d",
+        secondary_color: "#166534",
+        accent_color: "#ca8a04",
+        background_color: "#f0fdf4",
+      },
+    });
+  }
+  console.log("Configuración y branding Restaurante 2 listos");
+
   console.log("\n=== Seed completado ===");
-  console.log("Credenciales de acceso:");
+  console.log(
+    "── Restaurante 1: Il Cafeto ───────────────────────────────────",
+  );
   console.log("  Admin  → admin@ilcafeto.com   / ilcafeto2024!");
   console.log("  Staff1 → staff1@ilcafeto.com  / Staff1234!");
   console.log("  Staff2 → staff2@ilcafeto.com  / Staff1234!");
   console.log("  Staff3 → staff3@ilcafeto.com  / Staff1234!");
+  console.log(
+    "── Restaurante 2: La Cazuela ──────────────────────────────────",
+  );
+  console.log("  Admin  → admin@lacazuela.com  / lacazuela2024!");
+  console.log("  Staff1 → staff1@lacazuela.com / Staff1234!");
+  console.log("  Staff2 → staff2@lacazuela.com / Staff1234!");
+  console.log(
+    "── Clientes (compartidos) ─────────────────────────────────────",
+  );
   console.log("  Cliente1 → cliente1@gmail.com / Cliente1234!");
   console.log("  Cliente2 → cliente2@gmail.com / Cliente1234!");
   console.log("  Cliente3 → cliente3@gmail.com / Cliente1234!");

@@ -13,16 +13,30 @@ function canAccess(pathname: string, role: UserRole): boolean {
   if (pathname.startsWith("/aion/admin")) {
     return role === "admin";
   }
-  if (pathname.startsWith("/aion/staff")) {
+  if (pathname.startsWith("/aion/staff") || pathname.startsWith("/api/staff")) {
     return role === "staff" || role === "admin";
   }
   return true;
 }
 
-function redirectToLogin(req: NextRequest): NextResponse {
+function isApi(pathname: string) {
+  return pathname.startsWith("/api/");
+}
+
+function unauthenticated(req: NextRequest): NextResponse {
+  if (isApi(req.nextUrl.pathname)) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
   const loginUrl = new URL("/aion/login", req.url);
   loginUrl.searchParams.set("next", req.nextUrl.pathname);
   return NextResponse.redirect(loginUrl);
+}
+
+function forbidden(req: NextRequest): NextResponse {
+  if (isApi(req.nextUrl.pathname)) {
+    return NextResponse.json({ error: "Acceso denegado." }, { status: 403 });
+  }
+  return NextResponse.redirect(new URL("/aion", req.url));
 }
 
 export async function proxy(req: NextRequest) {
@@ -31,14 +45,14 @@ export async function proxy(req: NextRequest) {
   const refreshToken = req.cookies.get(refreshCookieName())?.value;
 
   if (!accessToken && !refreshToken) {
-    return redirectToLogin(req);
+    return unauthenticated(req);
   }
 
   if (accessToken) {
     try {
       const payload = await verifyAccessToken(accessToken);
       if (!canAccess(pathname, payload.role)) {
-        return NextResponse.redirect(new URL("/aion", req.url));
+        return forbidden(req);
       }
       return NextResponse.next();
     } catch {
@@ -47,13 +61,13 @@ export async function proxy(req: NextRequest) {
   }
 
   if (!refreshToken) {
-    return redirectToLogin(req);
+    return unauthenticated(req);
   }
 
   try {
     const payload = await verifyRefreshToken(refreshToken);
     if (!canAccess(pathname, payload.role)) {
-      return NextResponse.redirect(new URL("/aion", req.url));
+      return forbidden(req);
     }
 
     const nextAccessToken = await signAccessToken({
@@ -67,10 +81,15 @@ export async function proxy(req: NextRequest) {
     response.cookies.set(accessCookieConfig(nextAccessToken));
     return response;
   } catch {
-    return redirectToLogin(req);
+    return unauthenticated(req);
   }
 }
 
 export const config = {
-  matcher: ["/aion/admin/:path*", "/aion/staff/:path*"],
+  matcher: [
+    "/aion/admin/:path*",
+    "/aion/staff/:path*",
+    "/api/admin/:path*",
+    "/api/staff/:path*",
+  ],
 };

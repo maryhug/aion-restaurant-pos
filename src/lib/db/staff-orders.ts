@@ -108,16 +108,16 @@ export async function advanceStaffOrderStatus(
       tables: { select: { restaurant_id: true } },
     },
   });
+  if (!current) {
+    throw new Error("Pedido no encontrado");
+  }
+
   if (restaurantId) {
     const ownerRestaurantId =
       current.restaurant_id ?? current.tables?.restaurant_id;
     if (ownerRestaurantId !== restaurantId) {
       throw new Error("Orden fuera del tenant");
     }
-  }
-
-  if (!current) {
-    throw new Error("Pedido no encontrado");
   }
 
   const nextStatus =

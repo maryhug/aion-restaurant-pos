@@ -1,324 +1,278 @@
 "use client";
 
-import { useState, useEffect, useCallback, ChangeEvent } from "react";
-import type { ExpenseCategory, ExpenseFormData } from "@/lib/db/expenses";
-import type { Expense } from "@/types/database";
-import { AionAdminSidebar } from "@/components/aion/admin/sidebar-nav";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAdminTenant } from "@/features/admin/tenant-context";
+import { DataTable } from "@/features/admin/components/data-table";
+import { ExpenseChart } from "@/features/admin/components/domain";
+import { FilterBar } from "@/features/admin/components/filter-bar";
+import {
+  Modal,
+  ModalActions,
+  Field,
+  inputCls,
+} from "@/features/admin/components/modal";
+import { StatsCard } from "@/features/admin/components/stats-card";
+import { formatCOP } from "@/features/admin/helpers";
 
-const CATEGORIES: ExpenseCategory[] = [
-  "ingredientes",
-  "servicios",
-  "nomina",
-  "equipos",
-  "otros",
-];
+type Expense = {
+  id: string;
+  description: string;
+  category: string;
+  amount: number;
+  date: string;
+  responsible: string;
+};
 
-const MONTHS = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-];
+type GastosData = {
+  expenses: Expense[];
+  totalPeriod: number;
+  topCategory: string;
+  avgExpense: number;
+  lastExpense: string;
+  byCategory: { label: string; value: number }[];
+};
 
-export default function GastosPage() {
-  const now = new Date();
+const CATEGORIES = ["ingredientes", "servicios", "nomina", "equipos", "otros"];
 
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+const EMPTY_FORM = {
+  description: "",
+  category: "ingredientes",
+  amount: "",
+  date: "",
+};
 
-  const [form, setForm] = useState<ExpenseFormData>({
-    description: "",
-    amount: 0,
-    category: "otros",
-    date: now.toISOString().split("T")[0],
+async function api(method: string, body: unknown) {
+  const r = await fetch("/api/admin/gastos", {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
+  if (!r.ok)
+    throw new Error((await r.json().catch(() => ({}))).error ?? "Error");
+  return r.json();
+}
 
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [profit, setProfit] = useState<{
-    totalSales: number;
-    totalCosts: number;
-    totalExpenses: number;
-    profit: number;
-  } | null>(null);
+export default function AdminExpensesPage() {
+  const { branchId } = useAdminTenant();
+  const [data, setData] = useState<GastosData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [modal, setModal] = useState<"create" | "edit" | null>(null);
+  const [selected, setSelected] = useState<Expense | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
-  const [loading, setLoading] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setSubmitError(null);
-
-    try {
-      const [expensesRes, reportRes] = await Promise.all([
-        fetch(
-          `/api/admin/expenses?year=${selectedYear}&month=${selectedMonth}`,
-        ),
-        fetch(
-          `/api/admin/expenses/report?year=${selectedYear}&month=${selectedMonth}`,
-        ),
-      ]);
-
-      if (!expensesRes.ok || !reportRes.ok) {
-        const expensesErr = (await expensesRes.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        const reportErr = (await reportRes.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        throw new Error(
-          expensesErr.error ??
-            reportErr.error ??
-            "Error al cargar reporte mensual",
-        );
-      }
-
-      const expensesJson = (await expensesRes.json()) as {
-        expenses: Expense[];
-      };
-      const reportJson = (await reportRes.json()) as {
-        totalSales: number;
-        totalCosts: number;
-        totalExpenses: number;
-        profit: number;
-      };
-      setExpenses(expensesJson.expenses ?? []);
-      setProfit(reportJson);
-    } catch (err) {
-      if (err instanceof Error) {
-        setSubmitError(err.message);
-      } else {
-        setSubmitError("Error desconocido al cargar datos");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedYear, selectedMonth]);
+  const reload = useCallback(() => {
+    fetch("/api/admin/gastos")
+      .then((r) => {
+        if (!r.ok) throw new Error("Error");
+        return r.json();
+      })
+      .then((d: GastosData) => setData(d))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    reload();
+  }, [reload]);
 
-  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: name === "amount" ? Number(value) : value,
-    }));
+  function openCreate() {
+    setForm({ ...EMPTY_FORM, date: new Date().toISOString().split("T")[0] });
+    setSelected(null);
+    setModal("create");
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSubmitError(null);
-    setSuccessMessage(null);
+  function openEdit(e: Expense) {
+    setSelected(e);
+    setForm({
+      description: e.description,
+      category: e.category,
+      amount: String(e.amount),
+      date: e.date,
+    });
+    setModal("edit");
+  }
 
+  async function handleSubmit(ev: React.FormEvent) {
+    ev.preventDefault();
+    setSaving(true);
     try {
-      const res = await fetch("/api/admin/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        throw new Error(payload.error ?? "Error al registrar gasto");
-      }
-
-      setSuccessMessage("Gasto registrado correctamente");
-      setForm({
-        description: "",
-        amount: 0,
-        category: "otros",
-        date: now.toISOString().split("T")[0],
-      });
-      await loadData();
+      const payload = {
+        description: form.description,
+        category: form.category,
+        amount: Number(form.amount),
+        date: form.date,
+        branchId,
+      };
+      if (modal === "create") await api("POST", payload);
+      else await api("PUT", { ...payload, id: selected!.id });
+      setModal(null);
+      reload();
     } catch (err) {
-      if (err instanceof Error) {
-        setSubmitError(err.message);
-      } else {
-        setSubmitError("Error desconocido al registrar el gasto");
-      }
+      alert(err instanceof Error ? err.message : "Error");
+    } finally {
+      setSaving(false);
     }
+  }
+
+  async function remove(e: Expense) {
+    if (!confirm(`¿Eliminar "${e.description}"?`)) return;
+    await api("DELETE", { id: e.id }).catch((err) => alert(err.message));
+    reload();
+  }
+
+  const filteredExpenses = useMemo(
+    () =>
+      categoryFilter
+        ? (data?.expenses ?? []).filter((e) => e.category === categoryFilter)
+        : (data?.expenses ?? []),
+    [data, categoryFilter],
+  );
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm text-stone-400">
+        Cargando gastos…
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm text-red-500">
+        Error al cargar datos.
+      </div>
+    );
   }
 
   return (
-    <>
-      <AionAdminSidebar current="gastos" />
-      <main className="min-w-0 flex-1 max-w-5xl p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Gastos</h1>
+    <div className="space-y-3">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatsCard
+          title="Gasto total del periodo"
+          value={formatCOP(data.totalPeriod)}
+        />
+        <StatsCard title="Categoría con más gasto" value={data.topCategory} />
+        <StatsCard title="Gasto promedio" value={formatCOP(data.avgExpense)} />
+        <StatsCard title="Último gasto registrado" value={data.lastExpense} />
+      </section>
 
-        <div className="flex gap-2">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="border rounded-lg px-3 py-2 text-sm"
-          >
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="border rounded-lg px-3 py-2 text-sm"
-          >
-            {[2024, 2025, 2026].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+      <FilterBar>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-xl border border-[var(--admin-border,#f1cfd4)] px-3 py-2 text-sm"
+        >
+          <option value="">Todas las categorías</option>
+          {data.byCategory.map((c) => (
+            <option key={c.label} value={c.label}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={openCreate}
+          className="rounded-xl bg-[var(--admin-primary,#581c22)] px-3 py-2 text-sm font-semibold text-white"
+        >
+          + Agregar gasto
+        </button>
+      </FilterBar>
+
+      <section className="grid gap-3 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <DataTable
+            rows={filteredExpenses}
+            rowKey={(r) => String(r.id)}
+            columns={[
+              { key: "description", label: "Descripción" },
+              { key: "category", label: "Categoría" },
+              {
+                key: "amount",
+                label: "Monto",
+                render: (r) => formatCOP(Number(r.amount)),
+              },
+              { key: "date", label: "Fecha" },
+              { key: "responsible", label: "Responsable" },
+              {
+                key: "acciones",
+                label: "Acciones",
+                render: (r) => (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => openEdit(r as unknown as Expense)}
+                      className="rounded border px-2 py-0.5 text-xs hover:bg-stone-50"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => remove(r as unknown as Expense)}
+                      className="rounded border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </div>
+        <ExpenseChart points={data.byCategory} />
+      </section>
 
-        <section className="bg-white border rounded-xl p-6 space-y-3">
-          <h2 className="text-lg font-semibold text-gray-700">Nuevo gasto</h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
+      <Modal
+        open={modal !== null}
+        onClose={() => setModal(null)}
+        title={modal === "create" ? "Agregar gasto" : "Editar gasto"}
+      >
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Field label="Descripción *">
             <input
-              name="description"
+              className={inputCls}
+              required
               value={form.description}
-              onChange={handleChange}
-              placeholder="Descripción"
-              className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
             />
-            <div className="grid grid-cols-3 gap-3">
-              <input
-                name="amount"
-                type="number"
-                value={form.amount}
-                onChange={handleChange}
-                min={0}
-                step={0.01}
-                placeholder="Monto"
-                className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <select
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-                className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </option>
-                ))}
-              </select>
-              <input
-                name="date"
-                type="date"
-                value={form.date}
-                onChange={handleChange}
-                className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-
-            {submitError && (
-              <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
-                {submitError}
-              </p>
-            )}
-            {successMessage && (
-              <p className="text-green-600 text-sm bg-green-50 border border-green-200 rounded-lg p-3">
-                {successMessage}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition"
+          </Field>
+          <Field label="Categoría *">
+            <select
+              className={inputCls}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
             >
-              Guardar gasto
-            </button>
-          </form>
-        </section>
-
-        {profit && (
-          <section className="bg-white border rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
-              Reporte de {MONTHS[selectedMonth - 1]} {selectedYear}
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Ventas totales</p>
-                <p className="text-xl font-bold text-green-700">
-                  ${profit.totalSales.toFixed(2)}
-                </p>
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Costo de productos</p>
-                <p className="text-xl font-bold text-red-600">
-                  ${profit.totalCosts.toFixed(2)}
-                </p>
-              </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <p className="text-xs text-gray-500 mb-1">Gastos operativos</p>
-                <p className="text-xl font-bold text-orange-600">
-                  ${profit.totalExpenses.toFixed(2)}
-                </p>
-              </div>
-              <div
-                className={`border rounded-lg p-4 ${profit.profit >= 0 ? "bg-blue-50 border-blue-200" : "bg-red-50 border-red-200"}`}
-              >
-                <p className="text-xs text-gray-500 mb-1">Ganancia real</p>
-                <p
-                  className={`text-xl font-bold ${profit.profit >= 0 ? "text-blue-700" : "text-red-700"}`}
-                >
-                  ${profit.profit.toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section className="bg-white border rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Gastos del mes
-          </h2>
-          {loading ? (
-            <p className="text-sm text-gray-500">Cargando...</p>
-          ) : expenses.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              No hay gastos registrados este mes.
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2">Fecha</th>
-                  <th className="pb-2">Descripción</th>
-                  <th className="pb-2">Categoría</th>
-                  <th className="pb-2 text-right">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((expense) => (
-                  <tr key={expense.id} className="border-b last:border-0">
-                    <td className="py-2 text-gray-500">{expense.date}</td>
-                    <td className="py-2">{expense.description}</td>
-                    <td className="py-2 capitalize text-gray-600">
-                      {expense.category}
-                    </td>
-                    <td className="py-2 text-right font-medium">
-                      ${Number(expense.amount).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      </main>
-    </>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Monto *">
+              <input
+                type="number"
+                min="0"
+                step="100"
+                className={inputCls}
+                required
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              />
+            </Field>
+            <Field label="Fecha *">
+              <input
+                type="date"
+                className={inputCls}
+                required
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Field>
+          </div>
+          <ModalActions onCancel={() => setModal(null)} saving={saving} />
+        </form>
+      </Modal>
+    </div>
   );
 }
