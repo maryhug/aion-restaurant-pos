@@ -33,6 +33,12 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NODE_ENV: production
 
+      # ← PASOS NUEVOS: copiar archivos estáticos al standalone
+      - name: Copy static files to standalone
+        run: |
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
