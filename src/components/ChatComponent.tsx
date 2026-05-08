@@ -11,6 +11,9 @@ type Props = {
   onClose?: () => void;
   inline?: boolean;
   contextData?: Record<string, string>;
+  title?: string;
+  welcomeMessage?: string;
+  inlinePlacement?: "center" | "right";
 };
 
 export default function Chat({
@@ -18,6 +21,9 @@ export default function Chat({
   onClose,
   inline = false,
   contextData,
+  title = "Asistente de Comida",
+  welcomeMessage = "¡Hola! Soy el Chef virtual de Ilcafeto. ¿Qué se te antoja pedir hoy?",
+  inlinePlacement = "center",
 }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -128,15 +134,22 @@ export default function Chat({
       <div
         className={
           inline
-            ? "fixed inset-x-0 bottom-5 z-50 mx-auto flex h-[72vh] min-h-[420px] w-[min(92vw,420px)] max-h-[760px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
+            ? inlinePlacement === "right"
+              ? "fixed bottom-24 right-5 z-50 flex h-[72vh] min-h-[420px] w-[min(92vw,420px)] max-h-[760px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
+              : "fixed inset-x-0 bottom-5 z-50 mx-auto flex h-[72vh] min-h-[420px] w-[min(92vw,420px)] max-h-[760px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
             : "fixed bottom-24 right-6 w-96 max-w-[90vw] h-[500px] bg-white dark:bg-zinc-900 border dark:border-zinc-700 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
         }
         style={
           inline
             ? {
-                transformOrigin: "bottom center",
+                transformOrigin:
+                  inlinePlacement === "right"
+                    ? "bottom right"
+                    : "bottom center",
                 animation:
-                  "aionChatPopIn 460ms cubic-bezier(0.22, 1, 0.36, 1), aionChatFloat 3.8s ease-in-out 520ms infinite, aionChatGlow 3.2s ease-in-out 520ms infinite",
+                  inlinePlacement === "right"
+                    ? "aionChatRightPopIn 520ms cubic-bezier(0.18, 0.9, 0.2, 1), aionChatFloat 4.1s ease-in-out 560ms infinite, aionChatGlow 3.2s ease-in-out 560ms infinite"
+                    : "aionChatPopIn 460ms cubic-bezier(0.22, 1, 0.36, 1), aionChatFloat 3.8s ease-in-out 520ms infinite, aionChatGlow 3.2s ease-in-out 520ms infinite",
               }
             : undefined
         }
@@ -168,14 +181,12 @@ export default function Chat({
         {/* Cabecera */}
         {!inline ? (
           <div className="flex items-center justify-between bg-blue-600 p-4 font-bold text-white">
-            <span>Asistente de Comida</span>
+            <span>{title}</span>
             <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
           </div>
         ) : (
           <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-3">
-            <span className="text-sm font-bold text-zinc-800">
-              Hablar con el chef
-            </span>
+            <span className="text-sm font-bold text-zinc-800">{title}</span>
             <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
           </div>
         )}
@@ -186,8 +197,7 @@ export default function Chat({
         >
           {messages.length === 0 && (
             <p className="text-center text-zinc-700 font-bold mt-6 text-sm px-4 drop-shadow-sm">
-              ¡Hola! Soy el Chef virtual de Ilcafeto. ¿Qué se te antoja pedir
-              hoy?
+              {welcomeMessage}
             </p>
           )}
           {messages.map((m, i) => (
@@ -270,6 +280,12 @@ if (
       0% { opacity: 0; transform: translateY(18px) scale(0.9); }
       65% { opacity: 1; transform: translateY(-3px) scale(1.02); }
       100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes aionChatRightPopIn {
+      0% { opacity: 0; transform: translate(14px, 26px) scale(0.86) rotate(-1.2deg); }
+      58% { opacity: 1; transform: translate(-2px, -4px) scale(1.02) rotate(0.4deg); }
+      100% { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
     }
 
     @keyframes aionChatFloat {
