@@ -17,7 +17,10 @@ export default async function AionPlatoDetailPage({ params }: Props) {
   if (!dish) notFound();
 
   return (
-    <div className="mx-auto max-w-lg pb-8" style={{ minHeight: "100dvh", background: aion.colors.pageBg }}>
+    <div
+      className="mx-auto max-w-lg pb-8"
+      style={{ minHeight: "100dvh", background: aion.colors.pageBg }}
+    >
       <header
         className="flex items-center justify-between border-b border-black/5 px-4 py-3"
         style={{ background: aion.colors.pageBg }}
@@ -46,7 +49,10 @@ export default async function AionPlatoDetailPage({ params }: Props) {
         >
           {dish.name}
         </h1>
-        <p className="mt-2 text-sm leading-relaxed" style={{ color: aion.colors.muted }}>
+        <p
+          className="mt-2 text-sm leading-relaxed"
+          style={{ color: aion.colors.muted }}
+        >
           {dish.description}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -81,7 +87,10 @@ export default async function AionPlatoDetailPage({ params }: Props) {
             No disponible por ahora
           </p>
         ) : null}
-        <p className="mt-4 text-center text-xs" style={{ color: aion.colors.muted }}>
+        <p
+          className="mt-4 text-center text-xs"
+          style={{ color: aion.colors.muted }}
+        >
           IVA incluido. Disponibilidad en tiempo real al confirmar.
         </p>
       </div>

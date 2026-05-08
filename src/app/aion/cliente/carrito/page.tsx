@@ -79,7 +79,10 @@ export default function AionCarritoPage() {
                     >
                       +
                     </button>
-                    <span className="ml-auto text-sm font-bold" style={{ color: aion.colors.primary }}>
+                    <span
+                      className="ml-auto text-sm font-bold"
+                      style={{ color: aion.colors.primary }}
+                    >
                       {formatCOP(unit * line.quantity)}
                     </span>
                   </div>
@@ -91,10 +94,16 @@ export default function AionCarritoPage() {
       )}
 
       {!empty ? (
-        <div className="border-t border-stone-200/80 p-4" style={{ background: aion.colors.pageBg }}>
+        <div
+          className="border-t border-stone-200/80 p-4"
+          style={{ background: aion.colors.pageBg }}
+        >
           <div className="flex items-center justify-between text-sm">
             <span style={{ color: aion.colors.muted }}>Subtotal (demo)</span>
-            <span className="text-lg font-extrabold" style={{ color: aion.colors.primary }}>
+            <span
+              className="text-lg font-extrabold"
+              style={{ color: aion.colors.primary }}
+            >
               {formatCOP(subtotal)}
             </span>
           </div>
@@ -105,8 +114,12 @@ export default function AionCarritoPage() {
           >
             Elegir fecha y hora
           </Link>
-          <p className="mt-2 text-center text-[11px]" style={{ color: aion.colors.muted }}>
-            Luego confirmerás la reserva con tu contacto. Sin cargo hasta que llegues.
+          <p
+            className="mt-2 text-center text-[11px]"
+            style={{ color: aion.colors.muted }}
+          >
+            Luego confirmerás la reserva con tu contacto. Sin cargo hasta que
+            llegues.
           </p>
         </div>
       ) : null}

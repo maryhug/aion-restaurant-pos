@@ -39,18 +39,18 @@ export function AionCartProvider({ children }: { children: ReactNode }) {
       item: { dishId: string; name: string; unitPrice: number },
       amount: number = 1,
     ) => {
-    setItems((prev) => {
-      const i = prev.findIndex((l) => l.dishId === item.dishId);
-      if (i === -1) return [...prev, { ...item, quantity: amount }];
-      const next = [...prev];
-      next[i] = {
-        ...next[i],
-        name: item.name,
-        unitPrice: item.unitPrice,
-        quantity: next[i].quantity + amount,
-      };
-      return next;
-    });
+      setItems((prev) => {
+        const i = prev.findIndex((l) => l.dishId === item.dishId);
+        if (i === -1) return [...prev, { ...item, quantity: amount }];
+        const next = [...prev];
+        next[i] = {
+          ...next[i],
+          name: item.name,
+          unitPrice: item.unitPrice,
+          quantity: next[i].quantity + amount,
+        };
+        return next;
+      });
     },
     [],
   );
