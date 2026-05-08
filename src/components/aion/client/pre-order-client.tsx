@@ -4,16 +4,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { aion } from "@/lib/aion/tokens";
+import { aion as defaultTokens } from "@/lib/aion/tokens";
+import type { TokenShape } from "@/lib/aion/token-types";
 import type { MenuItem } from "@/types/database";
 import { useAionOrder } from "@/lib/aion/order-context";
 
 type Props = {
   menuItems: MenuItem[];
   restaurantId: string | null;
+  basePath?: string;
+  tokens?: TokenShape;
 };
 
-export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
+export function AionPreOrderClient({
+  menuItems,
+  restaurantId,
+  basePath = "/aion",
+  tokens = defaultTokens,
+}: Props) {
+  const aion = tokens;
   const router = useRouter();
   const { items, addMenuItem, removeItem, setOrderId } = useAionOrder();
   const [openSheet, setOpenSheet] = useState(false);
@@ -51,7 +60,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
       }
       const data = (await res.json()) as { order: { id: string } };
       setOrderId(data.order.id);
-      router.push(`/aion/cliente/estado-pedido/${data.order.id}`);
+      router.push(`${basePath}/cliente/estado-pedido/${data.order.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de red");
     } finally {
@@ -67,7 +76,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
       <header className="mb-4 flex items-center justify-between">
         <div>
           <Link
-            href="/aion/cliente/experiencia"
+            href={`${basePath}/cliente/experiencia`}
             className="text-sm font-bold"
             style={{ color: aion.colors.primary }}
           >
@@ -88,7 +97,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             No tienes menú aceptado todavía.
           </p>
           <Link
-            href="/aion/cliente/experiencia"
+            href={`${basePath}/cliente/experiencia`}
             className="mt-3 inline-block text-sm font-bold"
             style={{ color: aion.colors.primary }}
           >

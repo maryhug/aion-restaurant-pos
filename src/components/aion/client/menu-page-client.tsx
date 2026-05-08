@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { aion } from "@/lib/aion/tokens";
+import { aion as defaultTokens } from "@/lib/aion/tokens";
+import type { TokenShape } from "@/lib/aion/token-types";
 import type { AionCategoryId, AionDish } from "@/lib/aion/types";
 import { aionCategoryLabels } from "@/data/aion-dishes";
 import { AionMenuCard } from "@/components/aion/client/menu-card";
@@ -26,7 +27,14 @@ const categories: { id: AionCategoryId; label: string }[] = [
   { id: "sándwiches", label: "Sándwiches" },
 ];
 
-export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
+type Props = { dishes: AionDish[]; basePath?: string; tokens?: TokenShape };
+
+export function AionMenuPageClient({
+  dishes,
+  basePath = "/aion",
+  tokens = defaultTokens,
+}: Props) {
+  const aion = tokens;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<AionCategoryId>("todos");
   const { lineCount } = useAionCart();
@@ -51,14 +59,14 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
       <div className="mx-auto max-w-xl px-4">
         <header className="flex items-center justify-between pt-3">
           <Link
-            href="/aion"
+            href={basePath}
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5"
             aria-label="Volver"
           >
             ←
           </Link>
           <Link
-            href="/aion/cliente/carrito"
+            href={`${basePath}/cliente/carrito`}
             className="relative grid size-8 place-items-center rounded-full bg-white text-stone-800 shadow-sm ring-1 ring-black/5"
             aria-label="Abrir carrito"
           >
@@ -147,7 +155,8 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
             <li key={d.id}>
               <AionMenuCard
                 dish={d}
-                hrefDetail={`/aion/cliente/plato/${d.id}`}
+                hrefDetail={`${basePath}/cliente/plato/${d.id}`}
+                tokens={aion}
               />
             </li>
           ))}

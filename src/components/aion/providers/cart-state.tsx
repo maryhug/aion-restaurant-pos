@@ -13,12 +13,18 @@ export type CartItem = {
   name: string;
   unitPrice: number;
   quantity: number;
+  category?: string;
 };
 
 type CartState = {
   items: CartItem[];
   add: (
-    item: { dishId: string; name: string; unitPrice: number },
+    item: {
+      dishId: string;
+      name: string;
+      unitPrice: number;
+      category?: string;
+    },
     amount?: number,
   ) => void;
   setQty: (dishId: string, quantity: number) => void;
@@ -36,21 +42,27 @@ export function AionCartProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback(
     (
-      item: { dishId: string; name: string; unitPrice: number },
+      item: {
+        dishId: string;
+        name: string;
+        unitPrice: number;
+        category?: string;
+      },
       amount: number = 1,
     ) => {
-    setItems((prev) => {
-      const i = prev.findIndex((l) => l.dishId === item.dishId);
-      if (i === -1) return [...prev, { ...item, quantity: amount }];
-      const next = [...prev];
-      next[i] = {
-        ...next[i],
-        name: item.name,
-        unitPrice: item.unitPrice,
-        quantity: next[i].quantity + amount,
-      };
-      return next;
-    });
+      setItems((prev) => {
+        const i = prev.findIndex((l) => l.dishId === item.dishId);
+        if (i === -1) return [...prev, { ...item, quantity: amount }];
+        const next = [...prev];
+        next[i] = {
+          ...next[i],
+          name: item.name,
+          unitPrice: item.unitPrice,
+          category: item.category,
+          quantity: next[i].quantity + amount,
+        };
+        return next;
+      });
     },
     [],
   );

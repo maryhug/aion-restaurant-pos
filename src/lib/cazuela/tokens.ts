@@ -1,0 +1,27 @@
+export const cazuela = {
+  colors: {
+    primary: "#14532d",
+    primaryAlt: "#166534",
+    hero: "#14532d",
+    pageBg: "#f0fdf4",
+    pageBgAlt: "#dcfce7",
+    pageBgBeige: "#f0fdf4",
+    text: "#14532d",
+    muted: "#166534",
+    border: "#bbf7d0",
+    white: "#ffffff",
+    pillInactive: "#dcfce7",
+    tagBg: "#d1fae5",
+    success: "#16a34a",
+    warning: "#ca8a04",
+    danger: "#dc2626",
+    info: "#2563eb",
+    staffBg: "#f0fdf4",
+  },
+  radius: {
+    sm: "8px",
+    md: "12px",
+    lg: "16px",
+    full: "9999px",
+  },
+} as const;
