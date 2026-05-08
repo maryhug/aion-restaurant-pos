@@ -23,10 +23,18 @@ export async function POST(req: Request) {
       console.warn("[chat] No hay platos en DB");
     } else {
       menuContext = dishes
-        .map(
-          (d) =>
-            `- ${d.name} (${d.category}): ${d.description ?? ""}. Precio: $${d.price}`,
-        )
+        .map((d) => {
+          let desc = d.description ?? "";
+          try {
+            if (desc.trim().startsWith("{")) {
+              const parsed = JSON.parse(desc);
+              desc = Object.entries(parsed)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(", ");
+            }
+          } catch (e) {}
+          return `- ${d.name} (${d.category}): ${desc}. Precio: $${d.price}`;
+        })
         .join("\n");
     }
   } catch (error) {
@@ -35,14 +43,19 @@ export async function POST(req: Request) {
 
   let extraContext = "";
   if (contextData && Object.keys(contextData).length > 0) {
-    extraContext = `\nCONTEXTO DEL CLIENTE (estado de ánimo, gustos actuales):\n${Object.entries(
-      contextData,
-    )
-      .map(([k, v]) => `- ${k}: ${v}`)
-      .join(
-        "\n",
-      )}\nTen en cuenta este contexto EXCLUSIVAMENTE si el cliente te pide explícitamente una recomendación basada en su estado de ánimo o perfil.\n`;
+    const validEntries = Object.entries(contextData).filter(
+      ([k, v]) => v && v.trim() !== "",
+    );
+    if (validEntries.length > 0) {
+      extraContext = `\n[PERFIL DEL CLIENTE BASADO EN TEST DE PERSONALIDAD]\n${validEntries
+        .map(([k, v]) => `- ${k}: ${v}`)
+        .join("\n")}\n[FIN DEL PERFIL]\n`;
+    }
   }
+
+  console.log("=== DEBUG CONTEXT DATA ===");
+  console.log(contextData);
+  console.log("=== FIN DEBUG ===");
 
   const assistantMode = contextData?.assistantMode;
 
@@ -118,16 +131,18 @@ ${adminContext || "- Sin contexto disponible"}`;
 
   // ── 2. System prompt estricto ────────────────────────────────────────────
   const systemPrompt = menuContext
-    ? `Eres el chef y asistente virtual de Ilcafeto, un café-restaurante.
+    ? `Eres el experto chef de Ilcafeto.
 ${extraContext}
-INSTRUCCIONES ABSOLUTAS — DEBES SEGUIRLAS SIN EXCEPCIÓN:
-1. Eres un experto recomendando platos DE ESTE MENÚ EXCLUSIVAMENTE.
-2. NUNCA inventes platos que no estén en el texto "NUESTRO MENÚ" de abajo.
-3. Si el usuario pide algo que NO ESTÁ EN EL MENÚ (por ejemplo: arepas, pizza, hamburguesa), dile amablemente que no preparan eso, y OBLIGATORIAMENTE ofrécele un plato REAL que sí esté en la lista y que sea atractivo. ¡Debes mencionar el nombre exacto de un plato de la lista!
-4. Sé extremadamente breve y directo (máximo 3 oraciones). Sin saludos largos ni filosofías.
-5. Usa únicamente los nombres, categorías y precios de la lista proporcionada.
+INSTRUCCIONES OBLIGATORIAS:
+1. Recomienda SOLO platos del "NUESTRO MENÚ" que verás abajo.
+2. NUNCA inventes platos que no estén en la lista.
+3. Lee el bloque [PERFIL DEL CLIENTE] que está arriba. Ahí dice exactamente cómo se siente el cliente y qué quiere. Asume esa información como un hecho.
+4. Tienes ESTRICTAMENTE PROHIBIDO preguntarle al cliente sobre su estado de ánimo o qué desea pedir. ¡No hagas preguntas!
+5. Tu única tarea es saludar y darle tu recomendación de plato inmediatamente basándote en su perfil, explicando brevemente por qué hace match con su estado actual (ej: "Veo que tienes ganas de algo dulce, así que te recomiendo...").
+6. NUNCA respondas con código ni formato JSON. Háblale al cliente en lenguaje natural, cálido y fluido.
+7. Sé extremadamente breve (máximo 3 oraciones).
 
-NUESTRO MENÚ (ÚNICOS platos que puedes recomendar):
+NUESTRO MENÚ:
 ${menuContext}`
     : `Eres el chef y asistente virtual de Ilcafeto, un café-restaurante.
 En este momento no tenemos información de platos disponibles. Responde brevemente que estamos actualizando el menú y disculpa el inconveniente.`;
