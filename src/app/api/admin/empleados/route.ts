@@ -116,6 +116,40 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+  const { restaurantId } = auth.payload;
+  const body = await req.json();
+
+  const employee = await prisma.employees.findFirst({
+    where: { id: body.employeeId, restaurant_id: restaurantId },
+  });
+  if (!employee)
+    return NextResponse.json(
+      { error: "Empleado no encontrado" },
+      { status: 404 },
+    );
+
+  const gross = Number(body.grossAmount);
+  const deductions = Number(body.deductionsAmount ?? 0);
+
+  await prisma.employee_payments.create({
+    data: {
+      restaurant_id: restaurantId,
+      branch_id: employee.branch_id,
+      employee_id: employee.id,
+      gross_amount: gross,
+      deductions_amount: deductions,
+      net_amount: gross - deductions,
+      payment_date: body.paymentDate ? new Date(body.paymentDate) : new Date(),
+      payment_method: body.paymentMethod ?? null,
+      note: body.note ?? null,
+    },
+  });
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (!auth.ok) return auth.response;

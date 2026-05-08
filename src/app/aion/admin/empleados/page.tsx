@@ -43,6 +43,8 @@ const PREDEFINED_ROLES = [
   "Vigilante",
 ];
 
+const PAYMENT_METHODS = ["efectivo", "transferencia", "cheque"];
+
 const EMPTY_FORM = {
   fullName: "",
   documentNumber: "",
@@ -51,6 +53,14 @@ const EMPTY_FORM = {
   salary: "",
   status: "active",
   hiredAt: "",
+};
+
+const EMPTY_PAY_FORM = {
+  grossAmount: "",
+  deductionsAmount: "0",
+  paymentMethod: "efectivo",
+  paymentDate: "",
+  note: "",
 };
 
 async function api(method: string, body: unknown) {
@@ -72,6 +82,9 @@ export default function AdminEmployeesPage() {
   const [selected, setSelected] = useState<Employee | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [payEmployee, setPayEmployee] = useState<Employee | null>(null);
+  const [payForm, setPayForm] = useState(EMPTY_PAY_FORM);
+  const [savingPay, setSavingPay] = useState(false);
 
   const reload = useCallback(() => {
     fetch("/api/admin/empleados")
@@ -130,6 +143,42 @@ export default function AdminEmployeesPage() {
       alert(err instanceof Error ? err.message : "Error");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openPay(e: Employee) {
+    setPayEmployee(e);
+    setPayForm({
+      ...EMPTY_PAY_FORM,
+      grossAmount: String(e.salary),
+      paymentDate: new Date().toISOString().split("T")[0],
+    });
+  }
+
+  async function handlePaySubmit(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (!payEmployee) return;
+    setSavingPay(true);
+    try {
+      const r = await fetch("/api/admin/empleados", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: payEmployee.id,
+          grossAmount: Number(payForm.grossAmount),
+          deductionsAmount: Number(payForm.deductionsAmount),
+          paymentMethod: payForm.paymentMethod,
+          paymentDate: payForm.paymentDate || null,
+          note: payForm.note || null,
+        }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Error");
+      setPayEmployee(null);
+      reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al registrar pago");
+    } finally {
+      setSavingPay(false);
     }
   }
 
@@ -219,6 +268,12 @@ export default function AdminEmployeesPage() {
                     Editar
                   </button>
                   <button
+                    onClick={() => openPay(emp)}
+                    className="rounded border border-emerald-300 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-50"
+                  >
+                    Pagar
+                  </button>
+                  <button
                     onClick={() => toggleActive(emp)}
                     className={`rounded border px-2 py-0.5 text-xs ${
                       isActive
@@ -236,6 +291,95 @@ export default function AdminEmployeesPage() {
       />
 
       <EmployeePaymentTable employees={data.employees} />
+
+      {/* Modal Pago */}
+      <Modal
+        open={payEmployee !== null}
+        onClose={() => setPayEmployee(null)}
+        title={`Registrar pago — ${payEmployee?.name ?? ""}`}
+      >
+        <form onSubmit={handlePaySubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Monto bruto *">
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                className={inputCls}
+                required
+                value={payForm.grossAmount}
+                onChange={(e) =>
+                  setPayForm({ ...payForm, grossAmount: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="Deducciones">
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                className={inputCls}
+                value={payForm.deductionsAmount}
+                onChange={(e) =>
+                  setPayForm({ ...payForm, deductionsAmount: e.target.value })
+                }
+              />
+            </Field>
+          </div>
+          <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm">
+            <span className="text-stone-500">Neto a pagar: </span>
+            <span className="font-bold text-emerald-700">
+              {formatCOP(
+                Math.max(
+                  0,
+                  Number(payForm.grossAmount || 0) -
+                    Number(payForm.deductionsAmount || 0),
+                ),
+              )}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Método de pago">
+              <select
+                className={inputCls}
+                value={payForm.paymentMethod}
+                onChange={(e) =>
+                  setPayForm({ ...payForm, paymentMethod: e.target.value })
+                }
+              >
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Fecha de pago *">
+              <input
+                type="date"
+                className={inputCls}
+                required
+                value={payForm.paymentDate}
+                onChange={(e) =>
+                  setPayForm({ ...payForm, paymentDate: e.target.value })
+                }
+              />
+            </Field>
+          </div>
+          <Field label="Nota">
+            <input
+              className={inputCls}
+              value={payForm.note}
+              onChange={(e) => setPayForm({ ...payForm, note: e.target.value })}
+              placeholder="Ej: Quincena mayo, bonificación…"
+            />
+          </Field>
+          <ModalActions
+            onCancel={() => setPayEmployee(null)}
+            saving={savingPay}
+          />
+        </form>
+      </Modal>
 
       <Modal
         open={modal !== null}
