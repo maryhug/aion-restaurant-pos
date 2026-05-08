@@ -1,10 +1,11 @@
 import "dotenv/config";
 import prisma from "../src/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 async function run() {
   console.log("Iniciando backfill multitenant admin...");
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // 1) Crear sede principal por restaurante si no existe.
     await tx.$executeRawUnsafe(`
       INSERT INTO branches (id, restaurant_id, name, code, is_active, created_at)
