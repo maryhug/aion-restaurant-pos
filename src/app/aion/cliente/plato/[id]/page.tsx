@@ -39,9 +39,8 @@ export default async function AionPlatoDetailPage({ params }: Props) {
       <div className="p-4">
         <div className="mb-3 flex justify-center">
           <AionDishThumbnail
-            className="h-40 w-40 rounded-2xl"
+            className="h-32 w-32 text-xs rounded-2xl"
             label={dish.name}
-            category={dish.category}
           />
         </div>
         <h1
@@ -79,7 +78,6 @@ export default async function AionPlatoDetailPage({ params }: Props) {
             dishId={dish.id}
             dishName={dish.name}
             dishPrice={dish.price}
-            dishCategory={dish.category}
             available={dish.available}
             label={dish.name}
           />

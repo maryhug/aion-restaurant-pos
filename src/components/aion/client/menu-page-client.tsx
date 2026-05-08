@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { aion as defaultTokens } from "@/lib/aion/tokens";
-import type { TokenShape } from "@/lib/aion/token-types";
+import { aion } from "@/lib/aion/tokens";
 import type { AionCategoryId, AionDish } from "@/lib/aion/types";
 import { aionCategoryLabels } from "@/data/aion-dishes";
 import { AionMenuCard } from "@/components/aion/client/menu-card";
@@ -27,14 +26,7 @@ const categories: { id: AionCategoryId; label: string }[] = [
   { id: "sándwiches", label: "Sándwiches" },
 ];
 
-type Props = { dishes: AionDish[]; basePath?: string; tokens?: TokenShape };
-
-export function AionMenuPageClient({
-  dishes,
-  basePath = "/aion",
-  tokens = defaultTokens,
-}: Props) {
-  const aion = tokens;
+export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<AionCategoryId>("todos");
   const { lineCount } = useAionCart();
@@ -59,14 +51,14 @@ export function AionMenuPageClient({
       <div className="mx-auto max-w-xl px-4">
         <header className="flex items-center justify-between pt-3">
           <Link
-            href={basePath}
+            href="/aion"
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5"
             aria-label="Volver"
           >
             ←
           </Link>
           <Link
-            href={`${basePath}/cliente/carrito`}
+            href="/aion/cliente/carrito"
             className="relative grid size-8 place-items-center rounded-full bg-white text-stone-800 shadow-sm ring-1 ring-black/5"
             aria-label="Abrir carrito"
           >
@@ -155,8 +147,7 @@ export function AionMenuPageClient({
             <li key={d.id}>
               <AionMenuCard
                 dish={d}
-                hrefDetail={`${basePath}/cliente/plato/${d.id}`}
-                tokens={aion}
+                hrefDetail={`/aion/cliente/plato/${d.id}`}
               />
             </li>
           ))}

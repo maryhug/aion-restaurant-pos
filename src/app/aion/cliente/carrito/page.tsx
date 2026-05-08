@@ -50,7 +50,7 @@ export default function AionCarritoPage() {
                 key={line.dishId}
                 className="flex gap-3 rounded-2xl bg-white p-2.5 ring-1 ring-black/[0.04]"
               >
-                <AionDishThumbnail label={line.name} category={line.category} />
+                <AionDishThumbnail label={line.name} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold leading-tight">
                     {line.name}

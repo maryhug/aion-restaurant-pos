@@ -1,60 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { aion as defaultTokens } from "@/lib/aion/tokens";
-import type { TokenShape } from "@/lib/aion/token-types";
+import Image from "next/image";
+import { aion } from "@/lib/aion/tokens";
 import { formatCOP } from "@/lib/aion/currency";
 import type { AionDish } from "@/lib/aion/types";
-import { categoryEmoji } from "@/lib/aion/category-emoji";
 import { IconPlus } from "../icons";
 import { useAionCartOptional } from "../providers/cart-state";
 
-type Props = { dish: AionDish; hrefDetail: string; tokens?: TokenShape };
+type Props = { dish: AionDish; hrefDetail: string };
 
-export function AionMenuCard({
-  dish,
-  hrefDetail,
-  tokens = defaultTokens,
-}: Props) {
-  const aion = tokens;
+export function AionMenuCard({ dish, hrefDetail }: Props) {
   const cart = useAionCartOptional();
-  const [added, setAdded] = useState(false);
-
-  function handleAdd() {
-    if (!dish.available) return;
-    cart?.add(
-      {
-        dishId: dish.id,
-        name: dish.name,
-        unitPrice: dish.price,
-        category: dish.category,
-      },
-      1,
-    );
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  }
-
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/[0.04]">
       <Link href={hrefDetail} className="block">
-        <div
-          className="flex h-36 w-full flex-col items-center justify-center gap-1"
-          style={{
-            background: `linear-gradient(135deg, ${aion.colors.tagBg} 0%, ${aion.colors.pageBgAlt} 100%)`,
-          }}
-        >
-          <span className="text-4xl leading-none" role="img" aria-hidden>
-            {categoryEmoji(dish.category)}
-          </span>
-          <span
-            className="line-clamp-1 px-3 text-center text-[11px] font-semibold"
-            style={{ color: aion.colors.primary }}
-          >
-            {dish.name}
-          </span>
-        </div>
+        {dish.imageHint ? (
+          <div className="relative h-36 w-full">
+            <Image
+              src={dish.imageHint}
+              alt={dish.name}
+              fill
+              sizes="(max-width: 768px) 50vw, 33vw"
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+        ) : (
+          <div className="grid h-36 w-full place-items-center bg-gradient-to-br from-stone-200/90 to-amber-100/80">
+            <span className="px-3 text-center text-xs font-semibold text-stone-500">
+              {dish.name}
+            </span>
+          </div>
+        )}
       </Link>
       <div className="p-3">
         <Link href={hrefDetail} className="block">
@@ -81,16 +59,18 @@ export function AionMenuCard({
           <button
             type="button"
             disabled={!dish.available}
-            onClick={handleAdd}
-            className="grid size-9 place-items-center rounded-xl text-white shadow-sm transition-all duration-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ background: added ? "#5AE88F" : aion.colors.primary }}
+            onClick={() => {
+              if (!dish.available) return;
+              cart?.add(
+                { dishId: dish.id, name: dish.name, unitPrice: dish.price },
+                1,
+              );
+            }}
+            className="grid size-9 place-items-center rounded-xl text-white shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ background: aion.colors.primary }}
             aria-label={`Añadir ${dish.name}`}
           >
-            {added ? (
-              <span className="text-base font-bold leading-none">✓</span>
-            ) : (
-              <IconPlus className="text-white" size={18} />
-            )}
+            <IconPlus className="text-white" size={18} />
           </button>
         </div>
       </div>

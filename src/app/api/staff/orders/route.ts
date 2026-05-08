@@ -2,14 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "@/lib/auth/session";
 
-// Mapeo DB → UI
-const DB_TO_UI: Record<string, string> = {
-  pending: "pendiente",
-  preparing: "preparando",
-  ready: "listo",
-};
-
-// GET /api/staff/orders — órdenes activas del restaurante (pendiente/preparando/listo)
+// GET /api/staff/orders — órdenes del restaurante para tablero staff
 export async function GET() {
   const session = await getServerSession();
   if (!session?.restaurantId) {
@@ -18,7 +11,9 @@ export async function GET() {
 
   const orders = await prisma.orders.findMany({
     where: {
-      status: { in: ["pending", "preparing", "ready"] },
+      status: {
+        in: ["pending", "preparing", "ready", "delivered", "cancelled"],
+      },
       OR: [
         { restaurant_id: session.restaurantId },
         { tables: { restaurant_id: session.restaurantId } },
@@ -29,6 +24,7 @@ export async function GET() {
       status: true,
       created_at: true,
       customer_name: true,
+      placed_by_user: { select: { name: true } },
       tables: { select: { number: true } },
       order_items: {
         select: {
@@ -58,9 +54,14 @@ export async function GET() {
 
     return {
       id: o.id,
+      code: `PED-${o.id.slice(0, 8).toUpperCase()}`,
       tableLabel: o.tables ? `Mesa ${o.tables.number}` : "Mesa ?",
-      customerName: o.customer_name ?? "",
-      state: DB_TO_UI[o.status] ?? "pendiente",
+      customerName: o.customer_name ?? o.placed_by_user?.name ?? "Cliente",
+      status: o.status,
+      createdAt:
+        o.created_at instanceof Date
+          ? o.created_at.toISOString()
+          : String(o.created_at),
       waitLabel,
       urgent,
       items: o.order_items.map((i) => ({

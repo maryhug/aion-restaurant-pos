@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { aion as defaultTokens } from "@/lib/aion/tokens";
-import type { TokenShape } from "@/lib/aion/token-types";
+import { aion } from "@/lib/aion/tokens";
 import type { OrderStatus } from "@/types/database";
 
 type ApiOrder = {
@@ -15,14 +14,7 @@ type ApiOrder = {
 
 const states: OrderStatus[] = ["pending", "preparing", "ready", "delivered"];
 
-type Props = { orderId: string; basePath?: string; tokens?: TokenShape };
-
-export function AionOrderStatusClient({
-  orderId,
-  basePath = "/aion",
-  tokens = defaultTokens,
-}: Props) {
-  const aion = tokens;
+export function AionOrderStatusClient({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<ApiOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +57,7 @@ export function AionOrderStatusClient({
     >
       <header className="mb-4">
         <Link
-          href={basePath}
+          href="/aion"
           className="text-sm font-bold"
           style={{ color: aion.colors.primary }}
         >

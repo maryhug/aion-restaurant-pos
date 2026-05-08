@@ -44,6 +44,78 @@ export async function POST(req: Request) {
       )}\nTen en cuenta este contexto EXCLUSIVAMENTE si el cliente te pide explícitamente una recomendación basada en su estado de ánimo o perfil.\n`;
   }
 
+  const assistantMode = contextData?.assistantMode;
+
+  if (assistantMode === "admin") {
+    const adminContext = Object.entries(contextData ?? {})
+      .filter(([key]) => key !== "assistantMode")
+      .map(([k, v]) => `- ${k}: ${v}`)
+      .join("\n");
+
+    const adminSystemPrompt = `Eres el asistente administrativo de un restaurante.
+Tu objetivo es ayudar al administrador con decisiones operativas y financieras.
+
+INSTRUCCIONES:
+1. Responde en español claro, breve y accionable.
+2. Usa el CONTEXTO ADMINISTRATIVO para dar recomendaciones concretas.
+3. Si falta información para concluir algo, dilo explícitamente y sugiere qué revisar.
+4. No inventes datos; trabaja solo con el contexto recibido.
+5. Máximo 5 oraciones por respuesta.
+
+CONTEXTO ADMINISTRATIVO:
+${adminContext || "- Sin contexto disponible"}`;
+
+    const ollamaUrl = `${process.env.OLLAMA_BASE_URL ?? "http://localhost:11434"}/api/chat`;
+    const response = await fetch(ollamaUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3.1:8b",
+        messages: [
+          { role: "system", content: adminSystemPrompt },
+          ...history.slice(-10),
+          { role: "user", content: message },
+        ],
+        stream: true,
+        options: {
+          temperature: 0.2,
+          num_predict: 220,
+          stop: [
+            "Usuario:",
+            "User:",
+            "<|end|>",
+            "<|user|>",
+            "<|assistant|>",
+            "<|system|>",
+          ],
+        },
+      }),
+    });
+
+    const transformStream = new TransformStream({
+      async transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        const lines = text.split("\n").filter((line) => line.trim() !== "");
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line);
+            if (json.message?.content) {
+              controller.enqueue(
+                new TextEncoder().encode(json.message.content),
+              );
+            }
+          } catch (e) {
+            console.error("[chat-admin] Error parsing JSON chunk:", e);
+          }
+        }
+      },
+    });
+
+    return new Response(response.body?.pipeThrough(transformStream), {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   // ── 2. System prompt estricto ────────────────────────────────────────────
   const systemPrompt = menuContext
     ? `Eres el chef y asistente virtual de Ilcafeto, un café-restaurante.

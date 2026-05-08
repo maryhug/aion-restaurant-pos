@@ -189,7 +189,27 @@ export default function AdminDashboardPage() {
       </section>
 
       <ChatbotLauncher onClick={() => setChatOpen(true)} />
-      <ChatbotDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatbotDrawer
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        contextData={{
+          salesToday: formatCOP(data.salesToday),
+          salesWeek: formatCOP(data.salesWeek),
+          salesMonth: formatCOP(data.salesMonth),
+          totalOrders: String(data.totalOrders),
+          avgTicket: formatCOP(data.avgTicket),
+          totalExpenses: formatCOP(data.totalExpenses),
+          profitEstimated: formatCOP(data.profitEstimated),
+          bestItem: data.bestItem
+            ? `${data.bestItem.name} (${data.bestItem.units} unidades)`
+            : "Sin datos",
+          upcomingReservations: String(data.alerts.upcomingReservations),
+          lowStockCount: String(data.alerts.lowStock.length),
+          highExpense: data.alerts.recentHighExpense
+            ? `${data.alerts.recentHighExpense.description}: ${formatCOP(data.alerts.recentHighExpense.amount)}`
+            : "Sin gasto alto reciente",
+        }}
+      />
     </div>
   );
 }

@@ -538,14 +538,16 @@ export function AionExperienceQuizClient({
             </button>
             <button
               type="button"
-              onClick={() => setShowChat(true)}
+              onClick={() => setShowChat((open) => !open)}
               className="w-full rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
               style={{
-                borderColor: colors.primary,
-                color: colors.primary,
+                borderColor: aion.colors.primary,
+                color: aion.colors.primary,
               }}
             >
-              Hablar con el Chef
+              {showChat
+                ? "Cerrar Cheff Virtual"
+                : "Hablar con el Cheff Virtual"}
             </button>
             <button
               type="button"
