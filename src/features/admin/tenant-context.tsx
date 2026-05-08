@@ -69,6 +69,25 @@ type TenantContextValue = {
   setBranchId: (id: string) => void;
 };
 
+const BRANDING_CACHE_KEY = "aion_tenant_branding";
+
+function readBrandingCache(): Tenant["branding"] | null {
+  try {
+    const raw = localStorage.getItem(BRANDING_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Tenant["branding"]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveBrandingCache(branding: Tenant["branding"]) {
+  try {
+    localStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify(branding));
+  } catch {
+    // localStorage no disponible
+  }
+}
+
 const TenantContext = createContext<TenantContextValue | null>(null);
 
 export function AdminTenantProvider({ children }: { children: ReactNode }) {
@@ -76,7 +95,10 @@ export function AdminTenantProvider({ children }: { children: ReactNode }) {
   const [branchId, setBranchId] = useState("");
 
   useEffect(() => {
-    applyTenantTheme(DEFAULT_TENANT.branding);
+    // Aplica el branding cacheado de inmediato para evitar flash de colores
+    const cached = readBrandingCache();
+    applyTenantTheme(cached ?? DEFAULT_TENANT.branding);
+
     fetch("/api/admin/configuracion")
       .then((r) => {
         if (!r.ok) throw new Error("fetch failed");
@@ -119,12 +141,13 @@ export function AdminTenantProvider({ children }: { children: ReactNode }) {
             chatbot: false,
           },
         };
+        saveBrandingCache(t.branding);
         setTenant(t);
         setBranchId(t.activeBranchId);
         applyTenantTheme(t.branding);
       })
       .catch(() => {
-        applyTenantTheme(DEFAULT_TENANT.branding);
+        applyTenantTheme(cached ?? DEFAULT_TENANT.branding);
       });
   }, []);
 

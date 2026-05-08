@@ -24,15 +24,6 @@ function minutesAgo(createdAt: string) {
   );
 }
 
-const demoNames = [
-  "María García",
-  "Carlos López",
-  "Ana Martínez",
-  "Sofía Ramírez",
-  "David Torres",
-  "Laura Gómez",
-];
-
 export default function AionStaffDashboardPage() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<StaffOrder[]>([]);
@@ -82,7 +73,7 @@ export default function AionStaffDashboardPage() {
         return {
           id: o.id,
           code: `ORD-${String(idx + 1).padStart(3, "0")}`,
-          customerName: demoNames[idx % demoNames.length],
+          customerName: o.customerName || "Cliente",
           status: statusMap[o.state],
           table: o.tableLabel,
           createdAt: new Date(Date.now() - elapsedMin * 60000).toISOString(),

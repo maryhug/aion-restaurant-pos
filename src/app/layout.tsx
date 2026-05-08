@@ -26,8 +26,21 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/*
+          Script de inicialización de tema admin.
+          Se ejecuta de forma síncrona antes del primer paint para evitar
+          el flash de colores por defecto.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var b=JSON.parse(localStorage.getItem('aion_tenant_branding')||'null');if(b&&b.primary){var r=document.documentElement;r.style.setProperty('--admin-primary',b.primary);r.style.setProperty('--admin-secondary',b.secondary);r.style.setProperty('--admin-accent',b.accent);r.style.setProperty('--admin-bg',b.background);r.style.setProperty('--admin-sidebar-bg',b.primary);r.style.setProperty('--admin-sidebar-bg-2',b.secondary);}}catch(e){}}())`,
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,17 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
-import Chat from "@/components/ChatComponent";
 import { useRouter } from "next/navigation";
-import { aion as defaultTokens } from "@/lib/aion/tokens";
-import type { TokenShape } from "@/lib/aion/token-types";
-import { categoryEmoji } from "@/lib/aion/category-emoji";
+import { aion } from "@/lib/aion/tokens";
 import { useAionOrder } from "@/lib/aion/order-context";
+import Chat from "@/components/ChatComponent";
 import type { MenuItem } from "@/types/database";
 
-type Props = { menuItems: MenuItem[]; basePath?: string; tokens?: TokenShape };
+type Props = { menuItems: MenuItem[] };
 
 type AnswerKey =
   | "moodWord"
@@ -20,10 +18,14 @@ type AnswerKey =
   | "intent"
   | "movieGenre";
 
-const questions: { key: AnswerKey; title: string; options: string[] }[] = [
+const questions: {
+  key: AnswerKey;
+  title: string;
+  options: string[];
+}[] = [
   {
     key: "moodWord",
-    title: "¿Cómo describes tu estado de ánimo hoy?",
+    title: "¿Cómo describe tu estado de ánimo hoy en una palabra?",
     options: [
       "Aventurero / Explorador",
       "Tranquilo / Relajado",
@@ -39,7 +41,7 @@ const questions: { key: AnswerKey; title: string; options: string[] }[] = [
   },
   {
     key: "riskMode",
-    title: "¿Prefieres jugar seguro o sorprenderte?",
+    title: "¿Prefieres jugar seguro o sorprenderte hoy?",
     options: [
       "Zona de confort",
       "Algo nuevo pero reconocible",
@@ -78,7 +80,7 @@ function getSuggestedMenu(
   const allText = Object.values(answers).join(" ").toLowerCase();
   const byCategoryAll = {
     entrada: menuItems.filter((i) =>
-      ["entradas", "ensaladas", "sopas"].includes(i.category.toLowerCase()),
+      ["entradas", "ensaladas"].includes(i.category.toLowerCase()),
     ),
     principal: menuItems.filter((i) =>
       [
@@ -87,6 +89,7 @@ function getSuggestedMenu(
         "adiciones",
         "ensaladas",
         "platos fuertes",
+        "sopas",
       ].includes(i.category.toLowerCase()),
     ),
     postre: menuItems.filter((i) => i.category.toLowerCase() === "postres"),
@@ -160,18 +163,13 @@ function getSuggestedMenu(
   };
 }
 
-export function AionExperienceQuizClient({
-  menuItems,
-  basePath = "/aion",
-  tokens: tokensProp,
-}: Props) {
-  const t = tokensProp ?? defaultTokens;
+export function AionExperienceQuizClient({ menuItems }: Props) {
   const router = useRouter();
   const { setItemsFromMenu } = useAionOrder();
-
   const [step, setStep] = useState(0);
   const [seed, setSeed] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [includeEntrada, setIncludeEntrada] = useState(true);
   const [includePostre, setIncludePostre] = useState(true);
   const [includeBebida, setIncludeBebida] = useState(false);
@@ -182,8 +180,6 @@ export function AionExperienceQuizClient({
     intent: "",
     movieGenre: "",
   });
-
-  const [chatOpen, setChatOpen] = useState(false);
 
   const finished = step >= questions.length;
 
@@ -207,6 +203,7 @@ export function AionExperienceQuizClient({
   const progress = Math.round(
     (Math.min(step + 1, questions.length) / questions.length) * 100,
   );
+
   const total = pickedItems.reduce((sum, item) => sum + Number(item.price), 0);
   const finalDish =
     suggestion.principal ??
@@ -226,323 +223,320 @@ export function AionExperienceQuizClient({
 
   return (
     <div
-      className="flex min-h-dvh w-full flex-col"
-      style={{ background: t.colors.pageBg }}
+      className="mx-auto min-h-dvh w-full max-w-xl px-4 py-6"
+      style={{ background: aion.colors.pageBg }}
     >
-      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
-        {/* Top bar */}
-        <header className="flex items-center justify-between px-4 pt-5 pb-4">
-          <Link
-            href={basePath}
-            className="grid size-9 place-items-center rounded-full bg-white text-sm font-bold shadow-sm ring-1 ring-black/5"
-            style={{ color: t.colors.primary }}
-            aria-label="Volver"
-          >
-            ←
-          </Link>
-
-          {/* Step dots */}
-          <div className="flex items-center gap-1.5">
-            {questions.map((q, i) => (
-              <span
-                key={q.key}
-                className="inline-block rounded-full transition-all duration-300 ease-in-out"
-                style={{
-                  width:
-                    i === Math.min(step, questions.length - 1) ? "24px" : "8px",
-                  height: "8px",
-                  background:
-                    i < step
-                      ? t.colors.primary
-                      : i === step
-                        ? t.colors.primary
-                        : t.colors.border,
-                  opacity: i < step ? 0.45 : 1,
-                }}
-              />
-            ))}
-          </div>
-
+      <header className="mb-5 flex items-center justify-between">
+        <Link
+          href="/aion"
+          className="grid size-8 place-items-center rounded-full bg-white text-sm font-bold shadow-sm ring-1 ring-black/5"
+          style={{ color: aion.colors.primary }}
+          aria-label="Volver"
+        >
+          ←
+        </Link>
+        <div className="mx-auto flex items-center gap-1.5">
           <span
-            className="w-10 text-right text-xs font-semibold"
-            style={{ color: t.colors.muted }}
-          >
-            {Math.min(step + 1, questions.length)}/{questions.length}
-          </span>
-        </header>
+            className="h-1.5 w-6 rounded-full transition-all duration-300 ease-in-out"
+            style={{ background: aion.colors.primary }}
+          />
+          {questions.map((q, i) => (
+            <span
+              key={q.key}
+              className="inline-block size-1.5 rounded-full transition-all duration-300 ease-in-out"
+              style={{ background: i <= step ? "#D69CA8" : "#E9D7DB" }}
+            />
+          ))}
+        </div>
+        <span
+          className="w-10 text-right text-xs font-semibold"
+          style={{ color: aion.colors.muted }}
+        >
+          {Math.min(step + 1, questions.length)}/{questions.length}
+        </span>
+      </header>
 
-        {/* Content */}
-        <div className="flex flex-1 flex-col px-4 pb-8">
-          {!finished ? (
-            isTransitioning ? (
-              /* Transition animation */
-              <div
-                className="flex flex-1 flex-col items-center justify-center rounded-3xl"
+      {!finished ? (
+        isTransitioning ? (
+          <section
+            className="grid min-h-[70vh] place-items-center rounded-3xl transition-all duration-300 ease-in-out"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 40%, #fff2f4 0%, #ffe5e5 65%)",
+            }}
+          >
+            <div className="grid justify-items-center">
+              <div className="relative mb-4">
+                <span className="absolute -inset-5 rounded-full bg-[#b3476a]/12" />
+                <span className="absolute -inset-2 rounded-full bg-[#b3476a]/16" />
+                <span
+                  className="relative block size-32 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 32% 28%, #e9a6b8 0%, #a3375c 72%)",
+                    animation: "aionBallMove 1.15s ease-in-out infinite",
+                  }}
+                />
+              </div>
+              <p
+                className="text-[2rem] font-black leading-tight"
                 style={{
-                  background: `radial-gradient(circle at 50% 40%, ${t.colors.pageBgAlt} 0%, ${t.colors.pageBg} 65%)`,
+                  color: aion.colors.primary,
+                  fontSize: "clamp(1.6rem,3.2vw,2.1rem)",
                 }}
               >
-                <div className="relative mb-6">
-                  <span
-                    className="absolute rounded-full"
-                    style={{
-                      inset: "-20px",
-                      background: `${t.colors.primary}18`,
-                      borderRadius: "9999px",
-                    }}
-                  />
-                  <span
-                    className="absolute rounded-full"
-                    style={{
-                      inset: "-8px",
-                      background: `${t.colors.primary}22`,
-                      borderRadius: "9999px",
-                    }}
-                  />
-                  <span
-                    className="relative block size-28 rounded-full"
-                    style={{
-                      background: `radial-gradient(circle at 32% 28%, ${t.colors.tagBg} 0%, ${t.colors.primary} 72%)`,
-                      animation: "xpBallMove 1.15s ease-in-out infinite",
-                    }}
-                  />
-                </div>
-                <p
-                  className="text-center font-black leading-tight"
+                Descubriendo tu experiencia
+              </p>
+              <div className="mt-2 flex gap-2">
+                <span
+                  className="size-2.5 rounded-full bg-[#7a2430]"
+                  style={{ animation: "aionDot 0.8s ease-in-out infinite" }}
+                />
+                <span
+                  className="size-2.5 rounded-full bg-[#7a2430]"
                   style={{
-                    color: t.colors.primary,
-                    fontSize: "clamp(1.4rem, 4vw, 1.9rem)",
+                    animation: "aionDot 0.8s ease-in-out 0.15s infinite",
                   }}
-                >
-                  Descubriendo tu experiencia
-                </p>
-                <div className="mt-3 flex gap-2">
-                  {[0, 0.15, 0.3].map((delay, i) => (
-                    <span
-                      key={i}
-                      className="size-2.5 rounded-full"
-                      style={{
-                        background: t.colors.primary,
-                        animation: `xpDot 0.8s ease-in-out ${delay}s infinite`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              /* Quiz question */
-              <div className="flex flex-1 flex-col">
-                <p
-                  className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em]"
-                  style={{ color: t.colors.muted }}
-                >
-                  Pregunta {step + 1} de {questions.length}
-                </p>
-
-                <h2
-                  className="font-extrabold leading-tight"
+                />
+                <span
+                  className="size-2.5 rounded-full bg-[#7a2430]"
                   style={{
-                    color: t.colors.text,
-                    fontSize: "clamp(1.5rem, 5vw, 2rem)",
+                    animation: "aionDot 0.8s ease-in-out 0.3s infinite",
                   }}
-                >
-                  {currentQuestion.title}
-                </h2>
-
-                <div className="mt-5 space-y-3">
-                  {currentQuestion.options.map((option) => {
-                    const active = answers[currentQuestion.key] === option;
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => onSelect(option)}
-                        className="flex w-full items-center justify-between rounded-full px-4 py-3 text-left text-sm font-semibold transition-all duration-300 ease-in-out"
-                        style={
-                          active
-                            ? {
-                                background: "#E8B9C3",
-                                color: aion.colors.primary,
-                                boxShadow: `0 0 0 2px ${aion.colors.primary}22`,
-                              }
-                            : { background: "#F4CDD5", color: aion.colors.text }
-                        }
-                      >
-                        <span>{option}</span>
-                        <span
-                          className="grid size-5 place-items-center rounded-full border text-[10px]"
-                          style={{
-                            borderColor: active
-                              ? aion.colors.primary
-                              : "#C9A5AD",
-                            color: active ? aion.colors.primary : "#C9A5AD",
-                            background: active ? "#FBEFF2" : "transparent",
-                          }}
-                        >
-                          {active ? "●" : ""}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/80">
-                  <div
-                    className="h-full rounded-full transition-all duration-300 ease-in-out"
-                    style={{
-                      width: `${progress}%`,
-                      background: aion.colors.primary,
-                    }}
-                  />
-                </div>
+                />
               </div>
-            )
-          ) : (
-            <section className="mx-auto w-full max-w-sm rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out">
+            </div>
+          </section>
+        ) : (
+          <section className="transition-all duration-300 ease-in-out">
+            <div className="mb-3">
               <p
-                className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
+                className="text-[11px] font-semibold uppercase tracking-[0.22em]"
                 style={{ color: aion.colors.muted }}
               >
-                Tu plato
+                Pregunta {step + 1}
               </p>
+            </div>
 
-              <div className="relative mt-1 h-64 overflow-hidden rounded-2xl bg-[#f5dbe0]">
-                {finalDish?.image_url ? (
-                  <Image
-                    src={finalDish.image_url}
-                    alt={finalDish.name}
-                    fill
-                    unoptimized
-                    sizes="(max-width: 640px) 90vw, 400px"
-                    className="object-cover"
-                  />
-                ) : null}
-              </div>
+            <h2
+              className="text-4 font-extrabold leading-tight transition-all duration-300 ease-in-out sm:text-[36px]"
+              style={{
+                color: aion.colors.text,
+                fontSize: "clamp(1.6rem,4vw,2.15rem)",
+              }}
+            >
+              {currentQuestion.title}
+            </h2>
 
-              <div className="px-1 pb-1 pt-3">
-                <p
-                  className="text-[10px] font-semibold uppercase tracking-[0.2em]"
-                  style={{ color: aion.colors.muted }}
-                >
-                  {finalDish?.category ?? "Especial"} · CAP. 1
-                </p>
-                <h2
-                  className="mt-1 text-4xl font-black"
-                  style={{
-                    color: aion.colors.primary,
-                    fontSize: "clamp(1.7rem,4.3vw,2.2rem)",
-                  }}
-                >
-                  {finalDish?.name ?? "Plato recomendado"}
-                </h2>
-                <p
-                  className="mt-2 text-xs italic leading-relaxed"
-                  style={{ color: aion.colors.muted }}
-                >
-                  &ldquo;
-                  {finalDish?.description ??
-                    "Una propuesta pensada para tu perfil: una mezcla de sabor, textura y sorpresa en una sola experiencia."}
-                  &rdquo;
-                </p>
-                <p
-                  className="mt-2 text-right text-sm font-extrabold"
-                  style={{ color: aion.colors.primary }}
-                >
-                  ${total.toLocaleString("es-CO")}
-                </p>
-              </div>
+            <div className="mt-5 space-y-3">
+              {currentQuestion.options.map((option) => {
+                const active = answers[currentQuestion.key] === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => onSelect(option)}
+                    className="flex w-full items-center justify-between rounded-full px-4 py-3 text-left text-sm font-semibold transition-all duration-300 ease-in-out"
+                    style={
+                      active
+                        ? {
+                            background: "#E8B9C3",
+                            color: aion.colors.primary,
+                            boxShadow: `0 0 0 2px ${aion.colors.primary}22`,
+                          }
+                        : { background: "#F4CDD5", color: aion.colors.text }
+                    }
+                  >
+                    <span>{option}</span>
+                    <span
+                      className="grid size-5 place-items-center rounded-full border text-[10px]"
+                      style={{
+                        borderColor: active ? aion.colors.primary : "#C9A5AD",
+                        color: active ? aion.colors.primary : "#C9A5AD",
+                        background: active ? "#FBEFF2" : "transparent",
+                      }}
+                    >
+                      {active ? "●" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/80">
+              <div
+                className="h-full rounded-full transition-all duration-300 ease-in-out"
+                style={{
+                  width: `${progress}%`,
+                  background: aion.colors.primary,
+                }}
+              />
+            </div>
+          </section>
+        )
+      ) : (
+        <section className="mx-auto w-full max-w-sm rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out">
+          <p
+            className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
+            style={{ color: aion.colors.muted }}
+          >
+            Tu plato
+          </p>
 
-              {/* Description */}
-              {finalDish?.description ? (
-                <p className="px-4 pt-3 text-xs italic leading-relaxed text-stone-500">
-                  &ldquo;{finalDish.description}&rdquo;
-                </p>
-              ) : (
-                <p className="px-4 pt-3 text-xs italic leading-relaxed text-stone-500">
-                  &ldquo;Una propuesta pensada para tu perfil: una mezcla de
-                  sabor, textura y sorpresa en una sola experiencia.&rdquo;
-                </p>
-              )}
+          <div className="relative mt-1 h-64 overflow-hidden rounded-2xl bg-[#f5dbe0]">
+            {finalDish?.image_url ? (
+              <Image
+                src={finalDish.image_url}
+                alt={finalDish.name}
+                fill
+                unoptimized
+                sizes="(max-width: 640px) 90vw, 400px"
+                className="object-cover"
+              />
+            ) : null}
+          </div>
 
-              {/* Option rows */}
-              <div className="mt-3 space-y-2 px-4">
-                <OptionRow
-                  title="Plato"
-                  item={suggestion.principal}
-                  fixed
-                  tokens={t}
-                />
-                <OptionRow
-                  title="Entrada"
-                  item={suggestion.entrada}
-                  included={canIncludeEntrada && includeEntrada}
-                  onToggle={() =>
-                    canIncludeEntrada && setIncludeEntrada((v) => !v)
-                  }
-                  tokens={t}
-                />
-                <OptionRow
-                  title="Postre"
-                  item={suggestion.postre}
-                  included={canIncludePostre && includePostre}
-                  onToggle={() =>
-                    canIncludePostre && setIncludePostre((v) => !v)
-                  }
-                  tokens={t}
-                />
-                <OptionRow
-                  title="Bebida"
-                  item={suggestion.bebida}
-                  included={canIncludeBebida && includeBebida}
-                  onToggle={() =>
-                    canIncludeBebida && setIncludeBebida((v) => !v)
-                  }
-                  includeLabel="Agregar"
-                  tokens={t}
-                />
-              </div>
+          <div className="px-1 pb-1 pt-3">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.2em]"
+              style={{ color: aion.colors.muted }}
+            >
+              {finalDish?.category ?? "Especial"} · CAP. 1
+            </p>
+            <h2
+              className="mt-1 text-4xl font-black"
+              style={{
+                color: aion.colors.primary,
+                fontSize: "clamp(1.7rem,4.3vw,2.2rem)",
+              }}
+            >
+              {finalDish?.name ?? "Plato recomendado"}
+            </h2>
+            <p
+              className="mt-2 text-xs italic leading-relaxed"
+              style={{ color: aion.colors.muted }}
+            >
+              &ldquo;
+              {finalDish?.description ??
+                "Una propuesta pensada para tu perfil: una mezcla de sabor, textura y sorpresa en una sola experiencia."}
+              &rdquo;
+            </p>
+            <p
+              className="mt-2 text-right text-sm font-extrabold"
+              style={{ color: aion.colors.primary }}
+            >
+              ${total.toLocaleString("es-CO")}
+            </p>
+          </div>
 
-              <div className="mt-1 space-y-2 pb-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setItemsFromMenu(pickedItems);
-                    router.push("/aion/cliente/pre-orden");
-                  }}
-                  className="w-full rounded-full py-2.5 text-sm font-bold text-white transition-all duration-300 ease-in-out"
-                  style={{ background: aion.colors.primary }}
-                >
-                  Lo quiero
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncludeEntrada(true);
-                    setIncludePostre(true);
-                    setIncludeBebida(false);
-                    setSeed((s) => s + 1);
-                  }}
-                  className="w-full rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
-                  style={{
-                    borderColor: aion.colors.border,
-                    color: aion.colors.text,
-                  }}
-                >
-                  Otra opción
-                </button>
-                <Link
-                  href="/aion/cliente/menu"
-                  className="block text-center text-xs font-semibold"
-                  style={{ color: aion.colors.primary }}
-                >
-                  Ver menú completo
-                </Link>
-              </div>
-            </section>
+          <div className="space-y-2 px-1">
+            <OptionRow
+              title="Plato (obligatorio)"
+              item={suggestion.principal}
+              fixed
+            />
+            <OptionRow
+              title="Entrada"
+              item={suggestion.entrada}
+              included={canIncludeEntrada && includeEntrada}
+              onToggle={() =>
+                canIncludeEntrada && setIncludeEntrada((value) => !value)
+              }
+            />
+            <OptionRow
+              title="Postre"
+              item={suggestion.postre}
+              included={canIncludePostre && includePostre}
+              onToggle={() =>
+                canIncludePostre && setIncludePostre((value) => !value)
+              }
+            />
+            <OptionRow
+              title="Bebida (opcional)"
+              item={suggestion.bebida}
+              included={canIncludeBebida && includeBebida}
+              onToggle={() =>
+                canIncludeBebida && setIncludeBebida((value) => !value)
+              }
+              includeLabel="Agregar"
+            />
+          </div>
+
+          <div className="mt-1 space-y-2 pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setItemsFromMenu(pickedItems);
+                router.push("/aion/cliente/pre-orden");
+              }}
+              className="w-full rounded-full py-2.5 text-sm font-bold text-white transition-all duration-300 ease-in-out"
+              style={{ background: aion.colors.primary }}
+            >
+              Lo quiero
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowChat(true)}
+              className="w-full rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
+              style={{
+                borderColor: aion.colors.primary,
+                color: aion.colors.primary,
+              }}
+            >
+              Hablar con el Chef
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIncludeEntrada(true);
+                setIncludePostre(true);
+                setIncludeBebida(false);
+                setSeed((s) => s + 1);
+              }}
+              className="w-full rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
+              style={{
+                borderColor: aion.colors.border,
+                color: aion.colors.text,
+              }}
+            >
+              Otra opción
+            </button>
+            <Link
+              href="/aion/cliente/menu"
+              className="block text-center text-xs font-semibold"
+              style={{ color: aion.colors.primary }}
+            >
+              Ver menú completo
+            </Link>
+          </div>
+
+          {showChat && (
+            <div className="fixed inset-0 z-50">
+              <Chat inline defaultOpen onClose={() => setShowChat(false)} />
+            </div>
           )}
-        </div>
-      </div>
+        </section>
+      )}
     </div>
   );
+}
+
+if (
+  typeof window !== "undefined" &&
+  !document.getElementById("aion-experience-animations")
+) {
+  const style = document.createElement("style");
+  style.id = "aion-experience-animations";
+  style.textContent = `
+    @keyframes aionBallMove {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-9px) scale(1.05); }
+    }
+    @keyframes aionDot {
+      0%, 100% { opacity: 0.25; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-2px); }
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 function OptionRow({
@@ -552,7 +546,6 @@ function OptionRow({
   onToggle,
   fixed = false,
   includeLabel = "Incluir",
-  tokens: t,
 }: {
   title: string;
   item: MenuItem | null;
@@ -560,32 +553,19 @@ function OptionRow({
   onToggle?: () => void;
   fixed?: boolean;
   includeLabel?: string;
-  tokens: TokenShape;
 }) {
   return (
-    <div
-      className="flex items-center justify-between rounded-xl px-3 py-2.5"
-      style={{ background: t.colors.pageBg }}
-    >
-      <div className="min-w-0 flex-1">
-        <p
-          className="text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: t.colors.muted }}
-        >
+    <div className="flex items-center justify-between rounded-xl bg-stone-50 px-2.5 py-2">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">
           {title}
         </p>
-        <p
-          className="truncate text-sm font-bold"
-          style={{ color: t.colors.text }}
-        >
+        <p className="truncate text-sm font-bold text-stone-800">
           {item?.name ?? "No disponible"}
         </p>
       </div>
       {fixed ? (
-        <span
-          className="ml-3 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
-          style={{ background: t.colors.tagBg, color: t.colors.primary }}
-        >
+        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
           Incluido
         </span>
       ) : (
@@ -593,16 +573,7 @@ function OptionRow({
           type="button"
           onClick={onToggle}
           disabled={!item}
-          className="ml-3 shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors disabled:opacity-40"
-          style={
-            included
-              ? {
-                  borderColor: t.colors.primary,
-                  color: t.colors.primary,
-                  background: t.colors.tagBg,
-                }
-              : { borderColor: t.colors.border, color: t.colors.muted }
-          }
+          className="rounded-full border px-2.5 py-1 text-[11px] font-bold disabled:opacity-45"
         >
           {included ? "Omitir" : includeLabel}
         </button>

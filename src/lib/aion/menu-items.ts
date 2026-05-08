@@ -22,8 +22,7 @@ function normalizeCategory(raw: string): AionDish["category"] {
   if (validCategories.includes(normalized as AionDish["category"])) {
     return normalized as AionDish["category"];
   }
-  // Preserve unknown categories (multi-tenant restaurants may have different categories)
-  return normalized as AionDish["category"];
+  return "entradas";
 }
 
 function fromRow(row: {
@@ -53,12 +52,20 @@ export async function fetchAionMenuDishes(options?: {
   restaurantId?: string;
 }): Promise<AionDish[]> {
   const includeUnavailable = options?.includeUnavailable ?? false;
-  const restaurantId = options?.restaurantId;
+
+  const restaurantId =
+    options?.restaurantId ??
+    (
+      await prisma.restaurants.findFirst({
+        select: { id: true },
+        orderBy: { created_at: "asc" },
+      })
+    )?.id;
 
   const rows = await prisma.menu_items.findMany({
     where: {
       ...(includeUnavailable ? {} : { available: true }),
-      ...(restaurantId ? { restaurant_id: restaurantId } : {}),
+      restaurant_id: restaurantId,
     },
     orderBy: { name: "asc" },
   });
