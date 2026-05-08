@@ -1,74 +1,67 @@
 import { fetchAionMenuDishes } from "@/lib/aion/menu-items";
-import { cosineSimilarity, getEmbedding } from "@/vectorUtils";
 
 export async function POST(req: Request) {
-  const { message } = await req.json();
+  const { message, history = [] } = (await req.json()) as {
+    message: string;
+    history: { role: "user" | "assistant"; content: string }[];
+  };
 
-  let context = "";
+  // ── 1. Cargar el menú completo ─────────────────────────────────────────────
+  // Se envía todo el menú directamente a Llama 3 para que tenga contexto total
+  // y pueda asociar correctamente (Ej: Arepa -> Sándwich) sin el filtro ciego del RAG.
+  let menuContext = "";
 
   try {
     const dishes = await fetchAionMenuDishes();
+
     if (dishes.length === 0) {
-      console.warn("Chat sin contexto: no hay platos disponibles en DB");
+      console.warn("[chat] No hay platos en DB");
     } else {
-      // 1. Obtener embedding de la pregunta del usuario
-      const userEmbedding = await getEmbedding(message);
-
-      // 2. Obtener embeddings de los platos y calcular similitud
-      const dishesWithSimilarity = await Promise.all(
-        dishes.map(async (dish) => {
-          const dishText = `${dish.name}: ${dish.description}`;
-          const dishEmbedding = await getEmbedding(dishText);
-          return {
-            ...dish,
-            similarity: cosineSimilarity(userEmbedding, dishEmbedding),
-          };
-        }),
-      );
-
-      // 3. Tomar los 3 platos más relevantes
-      const topDishes = dishesWithSimilarity
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 3);
-
-      // 4. Crear el contexto para la IA
-      context = topDishes
+      menuContext = dishes
         .map(
           (d) =>
-            `- ${d.name} (${d.category}): ${d.description}. Precio: $${d.price}`,
+            `- ${d.name} (${d.category}): ${d.description ?? ""}. Precio: $${d.price}`,
         )
         .join("\n");
     }
   } catch (error) {
-    console.error("Error en RAG:", error);
+    console.error("[chat] Error al cargar menú:", error);
   }
 
-  const systemPrompt = `Eres el asistente virtual de un puesto de comida callejera. 
-TU OBJETIVO: Recomendar platos de nuestro menú basándote EXCLUSIVAMENTE en la información proporcionada.
+  // ── 2. System prompt estricto ────────────────────────────────────────────
+  const systemPrompt = menuContext
+    ? `Eres el chef y asistente virtual de Ilcafeto, un café-restaurante.
 
-REGLAS CRÍTICAS:
-1. NO des recetas ni instrucciones de cómo preparar la comida.
-2. Si el usuario pregunta por algo que NO está en el menú (como arepas, pizza, etc.), indica que no lo tenemos y recomienda la opción más cercana de nuestra lista.
-3. Mantén tus respuestas cortas y directas.
-4. Usa siempre un tono amable y servicial.
+INSTRUCCIONES ABSOLUTAS — DEBES SEGUIRLAS SIN EXCEPCIÓN:
+1. Eres un experto recomendando platos DE ESTE MENÚ EXCLUSIVAMENTE.
+2. NUNCA inventes platos que no estén en el texto "NUESTRO MENÚ" de abajo.
+3. Si el usuario pide algo que NO ESTÁ EN EL MENÚ (por ejemplo: arepas, pizza, hamburguesa), dile amablemente que no preparan eso, y OBLIGATORIAMENTE ofrécele un plato REAL que sí esté en la lista y que sea atractivo. ¡Debes mencionar el nombre exacto de un plato de la lista!
+4. Sé extremadamente breve y directo (máximo 3 oraciones). Sin saludos largos ni filosofías.
+5. Usa únicamente los nombres, categorías y precios de la lista proporcionada.
 
-MENÚ DISPONIBLE PARA RECOMENDAR:
-${context ? context : "Lo sentimos, no tenemos información de platos en este momento."}
-`;
+NUESTRO MENÚ (ÚNICOS platos que puedes recomendar):
+${menuContext}`
+    : `Eres el chef y asistente virtual de Ilcafeto, un café-restaurante.
+En este momento no tenemos información de platos disponibles. Responde brevemente que estamos actualizando el menú y disculpa el inconveniente.`;
 
-  const response = await fetch("http://localhost:11434/api/chat", {
+  // ── 3. Llamar a Ollama con stream ────────────────────────────────────────
+  const ollamaUrl = `${process.env.OLLAMA_BASE_URL ?? "http://localhost:11434"}/api/chat`;
+
+  const response = await fetch(ollamaUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "phi3",
+      model: "llama3.1:8b",
       messages: [
         { role: "system", content: systemPrompt },
+        // Historial de la conversación (máx. últimos 10 mensajes)
+        ...history.slice(-10),
         { role: "user", content: message },
       ],
       stream: true,
       options: {
+        temperature: 0.1, // Casi determinístico: menos alucinaciones
+        num_predict: 200, // Limitar longitud de respuesta
         stop: [
           "Usuario:",
           "User:",
@@ -76,6 +69,7 @@ ${context ? context : "Lo sentimos, no tenemos información de platos en este mo
           "<|user|>",
           "<|assistant|>",
           "<|system|>",
+          "\n\n\n", // Cortar si empieza a escribir párrafos largos
         ],
       },
     }),
@@ -93,7 +87,7 @@ ${context ? context : "Lo sentimos, no tenemos información de platos en este mo
             controller.enqueue(new TextEncoder().encode(json.message.content));
           }
         } catch (e) {
-          console.error("Error parsing JSON chunk:", e);
+          console.error("[chat] Error parsing JSON chunk:", e);
         }
       }
     },
