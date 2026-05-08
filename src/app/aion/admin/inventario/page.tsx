@@ -62,6 +62,7 @@ function ProductTable({
     <DataTable
       rows={items}
       rowKey={(r) => String(r.id)}
+      pageSize={10}
       columns={[
         { key: "name", label: "Nombre" },
         { key: "category", label: "Categoría" },
