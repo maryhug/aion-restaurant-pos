@@ -9,10 +9,17 @@ export async function POST(req: NextRequest) {
       restaurantId?: string;
       tableId?: string | null;
       branchId?: string | null;
+      customerName?: string | null;
       items?: { menuItemId: string; quantity: number; unitPrice: number }[];
     };
 
-    const { restaurantId: bodyRestaurantId, tableId, branchId, items } = body;
+    const {
+      restaurantId: bodyRestaurantId,
+      tableId,
+      branchId,
+      items,
+      customerName,
+    } = body;
 
     let restaurantId = bodyRestaurantId ?? null;
     if (!restaurantId && tableId) {
@@ -23,30 +30,79 @@ export async function POST(req: NextRequest) {
       restaurantId = table?.restaurant_id ?? null;
     }
 
-    if (!restaurantId || !items || items.length === 0) {
+    if (!items || items.length === 0) {
       return NextResponse.json(
-        { error: "restaurantId e items son obligatorios" },
+        { error: "No hay platos en tu pedido." },
         { status: 400 },
       );
     }
 
-    // Verificar que los menuItems pertenecen a este restaurante
+    // Verificar los menuItems en DB
     const menuIds = items.map((i) => i.menuItemId);
-    const dbItems = await prisma.menu_items.findMany({
-      where: {
-        id: { in: menuIds },
-        restaurant_id: restaurantId,
+    const allItems = await prisma.menu_items.findMany({
+      where: { id: { in: menuIds } },
+      select: {
+        id: true,
+        restaurant_id: true,
         available: true,
+        name: true,
+        price: true,
       },
-      select: { id: true, price: true },
     });
 
-    if (dbItems.length !== menuIds.length) {
+    // Platos que no existen en el menú
+    const notFound = menuIds.filter((id) => !allItems.find((i) => i.id === id));
+    if (notFound.length > 0) {
       return NextResponse.json(
-        { error: "Uno o más ítems no son válidos para este restaurante" },
+        {
+          error:
+            "Algunos platos ya no están en el menú. Por favor recarga la página e intenta de nuevo.",
+        },
         { status: 400 },
       );
     }
+
+    // Platos no disponibles
+    const unavailable = allItems.filter((i) => !i.available);
+    if (unavailable.length > 0) {
+      const names = unavailable.map((i) => i.name).join(", ");
+      return NextResponse.json(
+        {
+          error: `Los siguientes platos ya no están disponibles: ${names}. Por favor retíralos de tu pedido.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Detectar mezcla de platos de distintos restaurantes
+    const uniqueRestaurants = [
+      ...new Set(allItems.map((i) => i.restaurant_id).filter(Boolean)),
+    ];
+    if (uniqueRestaurants.length > 1) {
+      return NextResponse.json(
+        {
+          error:
+            "Los platos de tu pedido pertenecen a restaurantes distintos. Por favor recarga la página.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Derivar restaurantId desde los propios platos si el cliente no lo envió o no coincide
+    const itemsRestaurantId = uniqueRestaurants[0] ?? null;
+    if (!restaurantId) restaurantId = itemsRestaurantId;
+
+    if (!restaurantId) {
+      return NextResponse.json(
+        {
+          error:
+            "No se pudo identificar el restaurante. Por favor recarga la página.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const dbItems = allItems;
 
     const total = dbItems.reduce((sum, dbItem) => {
       const reqItem = items.find((i) => i.menuItemId === dbItem.id);
@@ -56,8 +112,9 @@ export async function POST(req: NextRequest) {
     const order = await prisma.orders.create({
       data: {
         table_id: tableId ?? null,
-        restaurant_id: restaurantId,
+        restaurant_id: itemsRestaurantId ?? restaurantId,
         branch_id: branchId ?? null,
+        customer_name: customerName ?? null,
         status: "pending" satisfies OrderStatus,
         total,
         order_items: {

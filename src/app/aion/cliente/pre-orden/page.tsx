@@ -3,13 +3,14 @@ import type { MenuItem } from "@/types/database";
 import { AionPreOrderClient } from "@/components/aion/client/pre-order-client";
 
 export default async function AionClientePreOrdenPage() {
-  const [menuRows, firstRestaurant] = await Promise.all([
-    prisma.menu_items.findMany({
-      where: { available: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.restaurants.findFirst({ select: { id: true } }),
-  ]);
+  const firstRestaurant = await prisma.restaurants.findFirst({
+    select: { id: true },
+    orderBy: { created_at: "asc" },
+  });
+  const menuRows = await prisma.menu_items.findMany({
+    where: { available: true, restaurant_id: firstRestaurant?.id },
+    orderBy: { name: "asc" },
+  });
 
   const menuItems: MenuItem[] = menuRows.map((row) => ({
     id: row.id,

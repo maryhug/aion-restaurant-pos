@@ -1,9 +1,14 @@
 import { fetchAionMenuDishes } from "@/lib/aion/menu-items";
 
 export async function POST(req: Request) {
-  const { message, history = [] } = (await req.json()) as {
+  const {
+    message,
+    history = [],
+    contextData,
+  } = (await req.json()) as {
     message: string;
     history: { role: "user" | "assistant"; content: string }[];
+    contextData?: Record<string, string>;
   };
 
   // ── 1. Cargar el menú completo ─────────────────────────────────────────────
@@ -28,10 +33,21 @@ export async function POST(req: Request) {
     console.error("[chat] Error al cargar menú:", error);
   }
 
+  let extraContext = "";
+  if (contextData && Object.keys(contextData).length > 0) {
+    extraContext = `\nCONTEXTO DEL CLIENTE (estado de ánimo, gustos actuales):\n${Object.entries(
+      contextData,
+    )
+      .map(([k, v]) => `- ${k}: ${v}`)
+      .join(
+        "\n",
+      )}\nTen en cuenta este contexto EXCLUSIVAMENTE si el cliente te pide explícitamente una recomendación basada en su estado de ánimo o perfil.\n`;
+  }
+
   // ── 2. System prompt estricto ────────────────────────────────────────────
   const systemPrompt = menuContext
     ? `Eres el chef y asistente virtual de Ilcafeto, un café-restaurante.
-
+${extraContext}
 INSTRUCCIONES ABSOLUTAS — DEBES SEGUIRLAS SIN EXCEPCIÓN:
 1. Eres un experto recomendando platos DE ESTE MENÚ EXCLUSIVAMENTE.
 2. NUNCA inventes platos que no estén en el texto "NUESTRO MENÚ" de abajo.
