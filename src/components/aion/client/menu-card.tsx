@@ -1,38 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { aion } from "@/lib/aion/tokens";
 import { formatCOP } from "@/lib/aion/currency";
 import type { AionDish } from "@/lib/aion/types";
+import { categoryEmoji } from "@/lib/aion/category-emoji";
 import { IconPlus } from "../icons";
 import { useAionCartOptional } from "../providers/cart-state";
 
 type Props = { dish: AionDish; hrefDetail: string };
 
+const emojiByDishId: Record<string, string> = {
+  carpaccio: "🥩",
+  bruschetta: "🍅",
+  cesar: "🥗",
+  risotto: "🍚",
+  pollo: "🍗",
+  fettuccine: "🍝",
+  bolognese: "🍝",
+  filete: "🥩",
+  costillas: "🍖",
+  salmon: "🐟",
+  camarones: "🍤",
+  tiramisu: "🍰",
+  vino: "🍷",
+  limonada: "🍋",
+  cafe: "☕",
+};
+
+function dishEmoji(dish: AionDish): string {
+  const byId = emojiByDishId[dish.id.toLowerCase()];
+  if (byId) return byId;
+
+  const text = `${dish.name} ${dish.description ?? ""}`.toLowerCase();
+  if (/café|coffee|latte|expresso|americano|capuccino|capuchino/.test(text))
+    return "☕";
+  if (/vino|sangria|sangría/.test(text)) return "🍷";
+  if (/coctel|cóctel|mojito|margarita/.test(text)) return "🍹";
+  if (/cerveza/.test(text)) return "🍺";
+  if (/smoothie|batido|frappe|frapuchino|jugo/.test(text)) return "🥤";
+  if (/postre|torta|pastel|helado|brownie/.test(text)) return "🍰";
+  if (/sandwich|sándwich/.test(text)) return "🥪";
+  if (/ensalada/.test(text)) return "🥗";
+  if (/carne|res|cerdo|pollo|brocheta|pechuga/.test(text)) return "🥩";
+  if (/sopa|caldo/.test(text)) return "🍲";
+  if (/maiz|maíz|adicion|adición|acompañante/.test(text)) return "🍽️";
+  return categoryEmoji(dish.category);
+}
+
 export function AionMenuCard({ dish, hrefDetail }: Props) {
   const cart = useAionCartOptional();
+  const emoji = dishEmoji(dish);
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/[0.04]">
       <Link href={hrefDetail} className="block">
-        {dish.imageHint ? (
-          <div className="relative h-36 w-full">
-            <Image
-              src={dish.imageHint}
-              alt={dish.name}
-              fill
-              sizes="(max-width: 768px) 50vw, 33vw"
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-        ) : (
-          <div className="grid h-36 w-full place-items-center bg-gradient-to-br from-stone-200/90 to-amber-100/80">
-            <span className="px-3 text-center text-xs font-semibold text-stone-500">
-              {dish.name}
-            </span>
-          </div>
-        )}
+        <div className="grid h-36 w-full place-items-center bg-gradient-to-br from-stone-200/90 to-amber-100/80">
+          <span className="text-5xl" aria-hidden>
+            {emoji}
+          </span>
+          <span className="sr-only">{dish.name}</span>
+        </div>
       </Link>
       <div className="p-3">
         <Link href={hrefDetail} className="block">
