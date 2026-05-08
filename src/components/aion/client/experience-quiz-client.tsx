@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import Chat from "@/components/ChatComponent";
 import { useRouter } from "next/navigation";
 import { aion } from "@/lib/aion/tokens";
 import { useAionOrder } from "@/lib/aion/order-context";
@@ -173,6 +174,8 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
     intent: "",
     movieGenre: "",
   });
+
+  const [chatOpen, setChatOpen] = useState(false);
 
   const finished = step >= questions.length;
 
@@ -367,7 +370,7 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
           </section>
         )
       ) : (
-        <section className="mx-auto w-full max-w-sm rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out">
+        <section className="relative mx-auto w-full max-w-sm rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out">
           <p
             className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
             style={{ color: aion.colors.muted }}
@@ -482,6 +485,22 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
             >
               Otra opción
             </button>
+
+            {/* Botón para abrir/cerrar el chat con embeddings */}
+            <button
+              type="button"
+              onClick={() => setChatOpen(!chatOpen)}
+              className="flex w-full items-center justify-center gap-2 rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
+              style={{
+                borderColor: aion.colors.primary,
+                color: aion.colors.primary,
+                background: "#FFF0F3",
+              }}
+            >
+              <span aria-hidden></span>{" "}
+              {chatOpen ? "Cerrar" : "Hablar con el Cheff"}
+            </button>
+
             <Link
               href="/aion/cliente/menu"
               className="block text-center text-xs font-semibold"
@@ -490,6 +509,13 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
               Ver menú completo
             </Link>
           </div>
+
+          {/* Chat con embeddings — renderizado como overlay en el 80% inferior */}
+          <Chat
+            defaultOpen={chatOpen}
+            onClose={() => setChatOpen(false)}
+            inline={true}
+          />
         </section>
       )}
     </div>
