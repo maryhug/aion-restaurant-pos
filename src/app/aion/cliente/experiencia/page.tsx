@@ -3,8 +3,12 @@ import type { MenuItem } from "@/types/database";
 import { AionExperienceQuizClient } from "@/components/aion/client/experience-quiz-client";
 
 export default async function AionClienteExperienciaPage() {
+  const firstRestaurant = await prisma.restaurants.findFirst({
+    select: { id: true },
+    orderBy: { created_at: "asc" },
+  });
   const rows = await prisma.menu_items.findMany({
-    where: { available: true },
+    where: { available: true, restaurant_id: firstRestaurant?.id },
     orderBy: { name: "asc" },
   });
 

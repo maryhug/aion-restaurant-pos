@@ -32,7 +32,6 @@ const statusTitles: Record<OrderStatus, string> = {
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
-
 export default function AionStaffDashboardPage() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<StaffOrder[]>([]);

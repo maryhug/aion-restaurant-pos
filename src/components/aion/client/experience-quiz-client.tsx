@@ -3,10 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import Chat from "@/components/ChatComponent";
 import { useRouter } from "next/navigation";
 import { aion } from "@/lib/aion/tokens";
 import { useAionOrder } from "@/lib/aion/order-context";
+import Chat from "@/components/ChatComponent";
 import type { MenuItem } from "@/types/database";
 
 type Props = { menuItems: MenuItem[] };
@@ -83,9 +83,14 @@ function getSuggestedMenu(
       ["entradas", "ensaladas"].includes(i.category.toLowerCase()),
     ),
     principal: menuItems.filter((i) =>
-      ["carnes", "sándwiches", "adiciones", "ensaladas"].includes(
-        i.category.toLowerCase(),
-      ),
+      [
+        "carnes",
+        "sándwiches",
+        "adiciones",
+        "ensaladas",
+        "platos fuertes",
+        "sopas",
+      ].includes(i.category.toLowerCase()),
     ),
     postre: menuItems.filter((i) => i.category.toLowerCase() === "postres"),
     bebida: menuItems.filter((i) =>
@@ -164,6 +169,7 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
   const [step, setStep] = useState(0);
   const [seed, setSeed] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [includeEntrada, setIncludeEntrada] = useState(true);
   const [includePostre, setIncludePostre] = useState(true);
   const [includeBebida, setIncludeBebida] = useState(false);
@@ -174,8 +180,6 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
     intent: "",
     movieGenre: "",
   });
-
-  const [chatOpen, setChatOpen] = useState(false);
 
   const finished = step >= questions.length;
 
@@ -370,7 +374,7 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
           </section>
         )
       ) : (
-        <section className="relative mx-auto w-full max-w-sm rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out">
+        <section className="mx-auto w-full max-w-sm rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out">
           <p
             className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
             style={{ color: aion.colors.muted }}
@@ -471,6 +475,20 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
             </button>
             <button
               type="button"
+              onClick={() => setShowChat((open) => !open)}
+              className="w-full rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
+              style={{
+                borderColor: aion.colors.primary,
+                color: aion.colors.primary,
+                background: "#FFF0F3",
+              }}
+            >
+              {showChat
+                ? "Cerrar Cheff Virtual"
+                : "Hablar con el Cheff Virtual"}
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setIncludeEntrada(true);
                 setIncludePostre(true);
@@ -485,24 +503,6 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
             >
               Otra opción
             </button>
-
-            {/* Botón para abrir/cerrar el chat con embeddings */}
-            <button
-              type="button"
-              onClick={() => setChatOpen(!chatOpen)}
-              className="flex w-full items-center justify-center gap-2 rounded-full border py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
-              style={{
-                borderColor: aion.colors.primary,
-                color: aion.colors.primary,
-                background: "#FFF0F3",
-              }}
-            >
-              <span aria-hidden></span>{" "}
-              {chatOpen
-                ? "Cerrar Cheff Virtual"
-                : "Hablar con el Cheff Virtual"}
-            </button>
-
             <Link
               href="/aion/cliente/menu"
               className="block text-center text-xs font-semibold"
@@ -512,12 +512,11 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
             </Link>
           </div>
 
-          {/* Chat con embeddings — renderizado como overlay en el 80% inferior */}
-          <Chat
-            defaultOpen={chatOpen}
-            onClose={() => setChatOpen(false)}
-            inline={true}
-          />
+          {showChat && (
+            <div className="fixed inset-0 z-50">
+              <Chat inline defaultOpen onClose={() => setShowChat(false)} />
+            </div>
+          )}
         </section>
       )}
     </div>

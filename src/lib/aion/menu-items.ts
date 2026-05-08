@@ -49,11 +49,24 @@ function fromRow(row: {
 
 export async function fetchAionMenuDishes(options?: {
   includeUnavailable?: boolean;
+  restaurantId?: string;
 }): Promise<AionDish[]> {
   const includeUnavailable = options?.includeUnavailable ?? false;
 
+  const restaurantId =
+    options?.restaurantId ??
+    (
+      await prisma.restaurants.findFirst({
+        select: { id: true },
+        orderBy: { created_at: "asc" },
+      })
+    )?.id;
+
   const rows = await prisma.menu_items.findMany({
-    where: includeUnavailable ? undefined : { available: true },
+    where: {
+      ...(includeUnavailable ? {} : { available: true }),
+      restaurant_id: restaurantId,
+    },
     orderBy: { name: "asc" },
   });
 
