@@ -2,14 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "@/lib/auth/session";
 
-// Mapeo DB → UI
-const DB_TO_UI: Record<string, string> = {
-  pending: "pendiente",
-  preparing: "preparando",
-  ready: "listo",
-};
-
-// GET /api/staff/orders — órdenes activas del restaurante (pendiente/preparando/listo)
+// GET /api/staff/orders — órdenes del restaurante para tablero staff
 export async function GET() {
   const session = await getServerSession();
   if (!session?.restaurantId) {
@@ -18,7 +11,9 @@ export async function GET() {
 
   const orders = await prisma.orders.findMany({
     where: {
-      status: { in: ["pending", "preparing", "ready"] },
+      status: {
+        in: ["pending", "preparing", "ready", "delivered", "cancelled"],
+      },
       OR: [
         { restaurant_id: session.restaurantId },
         { tables: { restaurant_id: session.restaurantId } },
@@ -59,7 +54,7 @@ export async function GET() {
       id: o.id,
       tableLabel: o.tables ? `Mesa ${o.tables.number}` : "Mesa ?",
       customerName: "",
-      state: DB_TO_UI[o.status] ?? "pendiente",
+      status: o.status,
       waitLabel,
       urgent,
       items: o.order_items.map((i) => ({

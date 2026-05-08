@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { aion } from "@/lib/aion/tokens";
 import type { OrderStatus } from "@/types/database";
 import { useLanguage } from "@/lib/aion/language-context";
@@ -33,10 +34,19 @@ const demoNames = [
   "Laura Gómez",
 ];
 
+const statusTitles: Record<OrderStatus, string> = {
+  pending: "Pendiente",
+  preparing: "Preparando",
+  ready: "Listo",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+
 export default function AionStaffDashboardPage() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<StaffOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<OrderStatus | null>(null);
@@ -64,7 +74,7 @@ export default function AionStaffDashboardPage() {
       const data = (await res.json()) as {
         orders: {
           id: string;
-          state: "pendiente" | "preparando" | "listo";
+          status: OrderStatus;
           tableLabel: string;
           waitLabel: string;
           urgent?: boolean;
@@ -73,20 +83,15 @@ export default function AionStaffDashboardPage() {
       };
 
       const mapped: StaffOrder[] = data.orders.map((o, idx) => {
-        const statusMap: Record<typeof o.state, OrderStatus> = {
-          pendiente: "pending",
-          preparando: "preparing",
-          listo: "ready",
-        };
         const elapsedMin = Number(o.waitLabel.replace(/\D/g, "")) || 0;
         return {
           id: o.id,
           code: `ORD-${String(idx + 1).padStart(3, "0")}`,
           customerName: demoNames[idx % demoNames.length],
-          status: statusMap[o.state],
+          status: o.status,
           table: o.tableLabel,
           createdAt: new Date(Date.now() - elapsedMin * 60000).toISOString(),
-          isNew: statusMap[o.state] === "pending" && elapsedMin < 2,
+          isNew: o.status === "pending" && elapsedMin < 2,
           urgent: Boolean(o.urgent),
           items: o.items.map((item) => ({
             id: item.dishId,
@@ -111,6 +116,15 @@ export default function AionStaffDashboardPage() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  async function handleRefreshClick() {
+    setRefreshing(true);
+    try {
+      await fetchOrders();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function moveOrder(id: string, target: OrderStatus) {
     const current = orders.find((o) => o.id === id);
     if (!current || current.status === target) return;
@@ -130,8 +144,6 @@ export default function AionStaffDashboardPage() {
       });
       if (!res.ok) {
         setOrders(previous);
-      } else if (target === "delivered") {
-        setOrders((list) => list.filter((o) => o.id !== id));
       }
     } catch {
       setOrders(previous);
@@ -141,6 +153,8 @@ export default function AionStaffDashboardPage() {
   const pending = orders.filter((o) => o.status === "pending");
   const preparing = orders.filter((o) => o.status === "preparing");
   const ready = orders.filter((o) => o.status === "ready");
+  const delivered = orders.filter((o) => o.status === "delivered");
+  const cancelled = orders.filter((o) => o.status === "cancelled");
   const urgentCount = orders.filter((o) => o.urgent).length;
 
   return (
@@ -159,9 +173,9 @@ export default function AionStaffDashboardPage() {
           AION <span className="font-medium text-stone-500">staff</span>
         </p>
         <nav className="flex items-center gap-5 text-xs font-semibold text-stone-600">
-          <span>◻ Dashboard</span>
-          <span>◫ Pedidos</span>
-          <span>⌂ Inicio</span>
+          <span>Dashboard</span>
+          <span>Pedidos</span>
+          <span>Inicio</span>
         </nav>
       </div>
 
@@ -183,20 +197,51 @@ export default function AionStaffDashboardPage() {
             {nowLabel || " "}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void fetchOrders()}
-          className="rounded-xl px-4 py-2 text-sm font-bold text-white"
-          style={{ background: aion.colors.primary }}
-        >
-          Ver todos los pedidos
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/aion/staff/historial"
+            className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all duration-200"
+            style={{
+              color: aion.colors.text,
+              borderColor: `${aion.colors.primary}33`,
+              background: "#fff",
+            }}
+          >
+            Ver historial
+          </Link>
+          <button
+            type="button"
+            onClick={() => void handleRefreshClick()}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70"
+            style={{ background: aion.colors.primary }}
+          >
+            {refreshing ? (
+              <>
+                <span className="inline-block size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+                Actualizando...
+              </>
+            ) : (
+              "Ver todos los pedidos"
+            )}
+          </button>
+        </div>
       </div>
 
-      <ul className="mb-4 grid list-none grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="mb-4 grid list-none grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <KpiCard emoji="🕐" value={pending.length} label={t("pending")} />
         <KpiCard emoji="📦" value={preparing.length} label={t("preparing")} />
         <KpiCard emoji="✅" value={ready.length} label={t("ready")} />
+        <KpiCard
+          emoji="🚚"
+          value={delivered.length}
+          label={statusTitles.delivered}
+        />
+        <KpiCard
+          emoji="✖"
+          value={cancelled.length}
+          label={statusTitles.cancelled}
+        />
         <KpiCard emoji="⚠️" value={urgentCount} label={t("urgents")} danger />
       </ul>
 
@@ -221,40 +266,62 @@ export default function AionStaffDashboardPage() {
           Loading...
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          <Column
-            title={`${t("pending")} (${pending.length})`}
-            status="pending"
-            list={pending}
-            draggingId={draggingId}
-            dropTarget={dropTarget}
-            onDragStart={setDraggingId}
-            onDropToStatus={moveOrder}
-            setDropTarget={setDropTarget}
-            actionLabel={t("toPreparing")}
-          />
-          <Column
-            title={`${t("preparing")} (${preparing.length})`}
-            status="preparing"
-            list={preparing}
-            draggingId={draggingId}
-            dropTarget={dropTarget}
-            onDragStart={setDraggingId}
-            onDropToStatus={moveOrder}
-            setDropTarget={setDropTarget}
-            actionLabel={t("toReady")}
-          />
-          <Column
-            title={`${t("ready")} (${ready.length})`}
-            status="ready"
-            list={ready}
-            draggingId={draggingId}
-            dropTarget={dropTarget}
-            onDragStart={setDraggingId}
-            onDropToStatus={moveOrder}
-            setDropTarget={setDropTarget}
-            actionLabel={t("toDelivered")}
-          />
+        <div className="overflow-x-auto pb-1">
+          <div className="grid min-w-[1600px] grid-cols-5 gap-3">
+            <Column
+              title={`${statusTitles.pending} (${pending.length})`}
+              status="pending"
+              list={pending}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDropToStatus={moveOrder}
+              setDropTarget={setDropTarget}
+              actionLabel={t("toPreparing")}
+            />
+            <Column
+              title={`${statusTitles.preparing} (${preparing.length})`}
+              status="preparing"
+              list={preparing}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDropToStatus={moveOrder}
+              setDropTarget={setDropTarget}
+              actionLabel={t("toReady")}
+            />
+            <Column
+              title={`${statusTitles.ready} (${ready.length})`}
+              status="ready"
+              list={ready}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDropToStatus={moveOrder}
+              setDropTarget={setDropTarget}
+              actionLabel={t("toDelivered")}
+            />
+            <Column
+              title={`${statusTitles.delivered} (${delivered.length})`}
+              status="delivered"
+              list={delivered}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDropToStatus={moveOrder}
+              setDropTarget={setDropTarget}
+            />
+            <Column
+              title={`${statusTitles.cancelled} (${cancelled.length})`}
+              status="cancelled"
+              list={cancelled}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDropToStatus={moveOrder}
+              setDropTarget={setDropTarget}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -270,8 +337,15 @@ type ColProps = {
   onDragStart: (id: string | null) => void;
   onDropToStatus: (id: string, status: OrderStatus) => void;
   setDropTarget: (status: OrderStatus | null) => void;
-  actionLabel: string;
+  actionLabel?: string;
 };
+
+function nextStatusFor(status: OrderStatus): OrderStatus | null {
+  if (status === "pending") return "preparing";
+  if (status === "preparing") return "ready";
+  if (status === "ready") return "delivered";
+  return null;
+}
 
 function Column({
   title,
@@ -287,7 +361,7 @@ function Column({
   const { t } = useLanguage();
   return (
     <section
-      className="w-full rounded-3xl bg-[#ece9e3] p-2 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out"
+      className="h-[68vh] min-h-[540px] w-full rounded-3xl bg-[#ece9e3] p-2 shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-in-out"
       onDragOver={(e) => {
         e.preventDefault();
         setDropTarget(status);
@@ -317,16 +391,22 @@ function Column({
                 ? "#eab308"
                 : status === "preparing"
                   ? "#3b82f6"
-                  : "#22c55e",
+                  : status === "ready"
+                    ? "#22c55e"
+                    : status === "delivered"
+                      ? "#16a34a"
+                      : "#ef4444",
           }}
         />
         {title}
       </h2>
-      <ul className="flex list-none flex-col gap-2">
+      <ul className="flex h-[calc(100%-42px)] list-none flex-col gap-2 overflow-y-auto pr-1">
         {list.map((order) => (
           <li
             key={order.id}
-            draggable
+            draggable={
+              order.status !== "delivered" && order.status !== "cancelled"
+            }
             onDragStart={() => onDragStart(order.id)}
             onDragEnd={() => {
               onDragStart(null);
@@ -374,27 +454,20 @@ function Column({
                 </li>
               ))}
             </ul>
-            <button
-              type="button"
-              className="mt-2 w-full rounded-xl py-2 text-sm font-bold transition-all duration-300 ease-in-out"
-              onClick={() =>
-                onDropToStatus(
-                  order.id,
-                  status === "pending"
-                    ? "preparing"
-                    : status === "preparing"
-                      ? "ready"
-                      : "delivered",
-                )
-              }
-              style={
-                status === "preparing"
-                  ? { background: aion.colors.primary, color: "#fff" }
-                  : { background: "#ecebe8", color: aion.colors.text }
-              }
-            >
-              {actionLabel}
-            </button>
+            {nextStatusFor(status) && actionLabel ? (
+              <button
+                type="button"
+                className="mt-2 w-full rounded-xl py-2 text-sm font-bold transition-all duration-300 ease-in-out"
+                onClick={() => onDropToStatus(order.id, nextStatusFor(status)!)}
+                style={
+                  status === "preparing"
+                    ? { background: aion.colors.primary, color: "#fff" }
+                    : { background: "#ecebe8", color: aion.colors.text }
+                }
+              >
+                {actionLabel}
+              </button>
+            ) : null}
           </li>
         ))}
         {list.length === 0 ? (
