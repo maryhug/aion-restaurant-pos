@@ -29,15 +29,16 @@ export function AdminHeader({
   const [user, setUser] = useState<UserInfo | null>(null);
   const [popover, setPopover] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("aion_avatar_url") || "";
-    }
-    return "";
-  });
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("aion_avatar_url");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (stored) setAvatarUrl(stored);
+  }, []);
 
   useEffect(() => {
     fetch("/api/admin/me")
