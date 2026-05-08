@@ -4,8 +4,9 @@ import prisma from "../src/lib/prisma";
 async function run() {
   console.log("Iniciando backfill multitenant admin...");
 
-  await prisma.$transaction(async (tx: any) => {   // ← cambia (tx) por (tx: any)
-    // 1) Crear sede principal por restaurante si no existe.
+  await prisma.$transaction(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async (tx: any) => {    // 1) Crear sede principal por restaurante si no existe.
     await tx.$executeRawUnsafe(`
       INSERT INTO branches (id, restaurant_id, name, code, is_active, created_at)
       SELECT gen_random_uuid(), r.id, 'Sede Principal', 'MAIN', true, now()
