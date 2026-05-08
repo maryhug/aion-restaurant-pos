@@ -25,10 +25,13 @@ type DashboardData = {
   };
 };
 
+const ALERTS_PER_PAGE = 4;
+
 export default function AdminDashboardPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertPage, setAlertPage] = useState(0);
 
   useEffect(() => {
     fetch("/api/admin/dashboard")
@@ -141,12 +144,47 @@ export default function AdminDashboardPage() {
         <article className="rounded-2xl border border-[var(--admin-border,#f1cfd4)] bg-white p-4">
           <h3 className="font-bold">Alertas operativas</h3>
           <ul className="mt-3 space-y-2 text-sm">
-            {alerts.map((a, i) => (
-              <li key={i} className={`rounded-xl p-2 ${a.color}`}>
-                {a.text}
-              </li>
-            ))}
+            {alerts
+              .slice(
+                alertPage * ALERTS_PER_PAGE,
+                (alertPage + 1) * ALERTS_PER_PAGE,
+              )
+              .map((a, i) => (
+                <li key={i} className={`rounded-xl p-2 ${a.color}`}>
+                  {a.text}
+                </li>
+              ))}
           </ul>
+          {alerts.length > ALERTS_PER_PAGE && (
+            <div className="mt-3 flex items-center justify-between text-xs text-stone-500">
+              <button
+                onClick={() => setAlertPage((p) => Math.max(0, p - 1))}
+                disabled={alertPage === 0}
+                className="rounded-lg px-3 py-1 hover:bg-stone-100 disabled:opacity-30"
+              >
+                ← Anterior
+              </button>
+              <span>
+                {alertPage + 1} / {Math.ceil(alerts.length / ALERTS_PER_PAGE)}
+              </span>
+              <button
+                onClick={() =>
+                  setAlertPage((p) =>
+                    Math.min(
+                      Math.ceil(alerts.length / ALERTS_PER_PAGE) - 1,
+                      p + 1,
+                    ),
+                  )
+                }
+                disabled={
+                  alertPage >= Math.ceil(alerts.length / ALERTS_PER_PAGE) - 1
+                }
+                className="rounded-lg px-3 py-1 hover:bg-stone-100 disabled:opacity-30"
+              >
+                Siguiente →
+              </button>
+            </div>
+          )}
         </article>
       </section>
 
