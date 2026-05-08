@@ -1,8 +1,6 @@
-// src/app/aion/cliente/experiencia/page.tsx
 import prisma from "@/lib/prisma";
 import type { MenuItem } from "@/types/database";
 import { AionExperienceQuizClient } from "@/components/aion/client/experience-quiz-client";
-import type { menu_items } from "@prisma/client";
 
 export default async function AionClienteExperienciaPage() {
   const rows = await prisma.menu_items.findMany({
@@ -10,7 +8,7 @@ export default async function AionClienteExperienciaPage() {
     orderBy: { name: "asc" },
   });
 
-  const menuItems: MenuItem[] = rows.map((row: menu_items) => ({
+  const menuItems: MenuItem[] = rows.map((row) => ({
     id: row.id,
     restaurant_id: row.restaurant_id,
     name: row.name,
