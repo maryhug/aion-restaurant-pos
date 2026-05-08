@@ -49,6 +49,26 @@ export function AionMenuCard({ dish, hrefDetail }: Props) {
         >
           {dish.category}
         </p>
+        {dish.sabor && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {dish.sabor
+              .split(",")
+              .slice(0, 2)
+              .map((s) => (
+                <span
+                  key={s}
+                  className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
+                >
+                  {s.trim()}
+                </span>
+              ))}
+          </div>
+        )}
+        {dish.ingredientes && (
+          <p className="mt-0.5 line-clamp-1 text-[10px] text-stone-400">
+            {dish.ingredientes}
+          </p>
+        )}
         <div className="mt-2 flex items-center justify-between gap-2">
           <span
             className="text-sm font-extrabold"
@@ -73,6 +93,11 @@ export function AionMenuCard({ dish, hrefDetail }: Props) {
             <IconPlus className="text-white" size={18} />
           </button>
         </div>
+        {dish.recomendado_con && (
+          <p className="mt-1.5 line-clamp-1 text-[10px] text-stone-400">
+            Ideal con: {dish.recomendado_con}
+          </p>
+        )}
       </div>
     </article>
   );

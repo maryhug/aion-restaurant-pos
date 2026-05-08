@@ -1,85 +1,98 @@
-categoria,producto,precio
-Smoothies,Mango naranja,16000
-Smoothies,Fresa naranja limón,16000
-Smoothies,Fresa naranja banano,16000
-Smoothies,Piña naranja mora,16000
-Smoothies,Piña naranja banano,16000
-Cervezas,BBC,12000
-Cervezas,3 Cordilleras,12000
-Cervezas,Club Colombia,9000
-Cervezas,Corona,12000
-Cervezas,Stella,12000
-Cócteles,Colimocho,28000
-Cócteles,Tinto de verano,26000
-Cócteles,Mojito,27000
-Cócteles,Cuba libre,26000
-Cócteles,Muller,25000
-Cócteles,Margarita,26000
-Sangría,Copa sangría,25000
-Sangría,Jarra x2,40000
-Sangría,Jarra x5,70000
-Vino,Vino casa,20000
-Vino,Vino rosado,22000
-Vino,Vino blanco,23000
-Vino,Merlot,25000
-Entradas,Maíz sencillo,22000
-Entradas,Maíz especial,28000
-Entradas,Nachos,18000
-Entradas,Cazuela pequeña,23000
-Entradas,Cazuela grande,28500
-Entradas,Tabla de queso,60000
-Entradas,Combinado ibérico,75000
-Cafés,Expreso,5000
-Cafés,Americano,7000
-Cafés,Capuchino,8500
-Cafés,Moka caliente,9000
-Cafés,Carajillo amaretto,11000
-Cafés,Carajillo whisky,14000
-Cafés,Carajillo vino,15000
-Cafés,Carajillo coñac,11000
-Cafés,Carajillo ron,9500
-Cafés,Latte macchiato,15000
-Cafés,Irlandés,15000
-Cafés,Café helado,13000
-Cafés,Moka frío,14500
-Cafés,Frapuchino,15000
-Cafés,Aromática tradicional,5000
-Cafés,Aromática frutos rojos,7000
-Cafés,Té chai,9000
-Postres,Brownie,14000
-Postres,Fresas chantilli,15500
-Sándwiches,Ibérico,35000
-Sándwiches,IL Cafeto Mixto,26500
-Sándwiches,Tradicional,20000
-Sándwiches,Hawaiano,20000
-Sándwiches,Pollo,26000
-Sándwiches,Pollo desmechado,23000
-Sándwiches,Carne desmechada,26000
-Sándwiches,Bacon,25000
-Sándwiches,Vegetariano,22000
-Sándwiches,Atún,26000
-Sándwiches,Cerdo,25000
-Carnes,Brocheta de cerdo,36000
-Carnes,Pechuga gratinada,40000
-Carnes,Cañón,39000
-Carnes,Milanesa,39000
-Carnes,Solomito,42000
-Carnes,Salmón,47000
-Ensaladas,Ensalada en bowl,30000
-Adiciones,Adición queso,5000
-Adiciones,Champiñones,5000
-Adiciones,Tocineta,7000
-Bebidas,Limonada natural,8500
-Bebidas,Limonada lychee,14500
-Bebidas,Coco,15000
-Bebidas,Cereza,14000
-Bebidas,Hierbabuena,10000
-Bebidas,Piña hierbabuena,13000
-Bebidas,Jugo agua,7500
-Bebidas,Jugo leche,9000
-Bebidas,Avena,11500
-Bebidas,Milo frío,10500
-Bebidas,Botella agua,6000
-Bebidas,Soda michelada,9000
-Bebidas,Soda saborizada,14000
-Bebidas,Batido de proteína,18000
+categoria,producto,precio,ingredientes,sabor,perfil,recomendado_con
+Smoothies,Mango naranja,16000,"mango,naranja","dulce,cítrico,tropical","refrescante,frutal","sandwich hawaiano,pollo"
+Smoothies,Fresa naranja limón,16000,"fresa,naranja,limón","cítrico,dulce","refrescante","postres,fresas chantilli"
+Smoothies,Fresa naranja banano,16000,"fresa,naranja,banano","dulce,cremoso","frutal","brownie,sandwich tradicional"
+Smoothies,Piña naranja mora,16000,"piña,naranja,mora","ácido,tropical","refrescante","ensaladas,salmón"
+Smoothies,Piña naranja banano,16000,"piña,naranja,banano","tropical,cremoso","frutal","sandwich hawaiano"
+
+Cervezas,BBC,12000,"malta,lúpulo","amargo,artesanal","cerveza artesanal","carnes,nachos"
+Cervezas,3 Cordilleras,12000,"malta,lúpulo","intenso,artesanal","cerveza fuerte","brocheta de cerdo"
+Cervezas,Club Colombia,9000,"malta","suave,balanceado","lager","sandwiches"
+Cervezas,Corona,12000,"malta,lúpulo","ligero,cítrico","refrescante","ensaladas,salmón"
+Cervezas,Stella,12000,"malta,lúpulo","elegante,seco","premium lager","combinado ibérico"
+
+Cócteles,Colimocho,28000,"vino tinto,gaseosa","dulce,afrutado","suave","tapas ibéricas"
+Cócteles,Tinto de verano,26000,"vino tinto,gaseosa,cítricos","refrescante,dulce","ligero","ensalada,salmón"
+Cócteles,Mojito,27000,"ron,limón,hierbabuena","mentolado,cítrico","refrescante","cazuelas,nachos"
+Cócteles,Cuba libre,26000,"ron,cola,limón","dulce,fuerte","clásico","carnes"
+Cócteles,Muller,25000,"licor,frutas","dulce,frutal","suave","postres"
+Cócteles,Margarita,26000,"tequila,limón","cítrico,fuerte","coctel clásico","nachos"
+
+Sangría,Copa sangría,25000,"vino tinto,fresa,naranja,manzana","frutal,dulce","refrescante","tapas ibéricas"
+Sangría,Jarra x2,40000,"vino tinto,fresa,naranja,manzana","frutal,dulce","compartir","entradas"
+Sangría,Jarra x5,70000,"vino tinto,fresa,naranja,manzana","frutal,dulce","grupal","combinado ibérico"
+
+Vino,Vino casa,20000,"vino tinto","seco,frutal","vino tinto","carnes"
+Vino,Vino rosado,22000,"vino rosado","suave,dulce","ligero","ensaladas"
+Vino,Vino blanco,23000,"vino blanco","cítrico,seco","refrescante","salmón"
+Vino,Merlot,25000,"uva merlot","robusto,frutal","vino premium","solomito"
+
+Entradas,Maíz sencillo,22000,"maíz,queso,sal,pimienta","salado,cremoso","snack","cervezas"
+Entradas,Maíz especial,28000,"maíz,pollo,tocineta,queso,crema de leche","cremoso,salado","abundante","mojito"
+Entradas,Nachos,18000,"nachos,queso cheddar,mozzarella,guacamole","salado","mexicano","margarita"
+Entradas,Cazuela pequeña,23000,"pollo o carne desmechada,pico de gallo,queso,nachos","intenso,salado","caliente","cerveza"
+Entradas,Cazuela grande,28500,"pollo,carne desmechada,pico de gallo,queso,nachos","abundante,salado","compartir","mojito"
+Entradas,Tabla de queso,60000,"quesos,aceitunas,pan","salado,gourmet","compartir","vino"
+Entradas,Combinado ibérico,75000,"jamón serrano,chorizo,lomo,queso manchego,aceitunas,pan","gourmet,salado","premium","vino tinto"
+Entradas,Tapas ibéricas,35000,"jamón serrano,chorizo,lomo,queso manchego,aceitunas,pan","gourmet","para compartir","sangría"
+
+Cafés,Expreso,5000,"café","intenso","energético","brownie"
+Cafés,Americano,7000,"café,agua","suave","clásico","sandwich tradicional"
+Cafés,Capuchino,8500,"espresso,leche","cremoso","cafetería","postres"
+Cafés,Moka caliente,9000,"café,chocolate,leche","dulce","cafetería","brownie"
+Cafés,Carajillo amaretto,11000,"café,amaretto","dulce,fuerte","licor café","postres"
+Cafés,Carajillo whisky,14000,"café,whisky","intenso","licor café","carnes"
+Cafés,Carajillo vino,15000,"café,vino","afrutado","experimental","tabla de quesos"
+Cafés,Carajillo coñac,11000,"café,coñac","fuerte","licor café","brownie"
+Cafés,Carajillo ron,9500,"café,ron","dulce","licor café","postres"
+Cafés,Latte macchiato,15000,"espresso,leche","suave,cremoso","cafetería","fresas chantilli"
+Cafés,Irlandés,15000,"café,whisky,crema","cremoso,fuerte","premium","brownie"
+Cafés,Café helado,13000,"café,hielo","refrescante","cold coffee","sandwiches"
+Cafés,Moka frío,14500,"café,chocolate,hielo","dulce","cold coffee","brownie"
+Cafés,Frapuchino,15000,"café,hielo,leche","dulce,frío","cafetería","postres"
+Cafés,Aromática tradicional,5000,"hierbas","suave","caliente","postres"
+Cafés,Aromática frutos rojos,7000,"frutos rojos","dulce","infusión","fresas chantilli"
+Cafés,Té chai,9000,"té,especias,leche","especiado","caliente","postres"
+
+Postres,Brownie,14000,"brownie,chantilli,canela","dulce,chocolate","postre caliente","capuchino"
+Postres,Fresas chantilli,15500,"fresas,chantilli,lecherita","dulce,frutal","postre frío","latte macchiato"
+
+Sándwiches,Ibérico,35000,"jamón serrano,chorizo,lomo,queso manchego,aceitunas","salado,gourmet","premium","vino tinto"
+Sándwiches,IL Cafeto Mixto,26500,"pollo,carne desmechada,pepino agridulce,cebolla caramelizada,queso","dulce,salado","especialidad","cerveza"
+Sándwiches,Hawaiano,20000,"jamón,piña,queso","dulce,salado","tropical","smoothie"
+Sándwiches,Tradicional,20000,"jamón,queso,tomate","clásico","simple","americano"
+Sándwiches,Pollo,26000,"pechuga,champiñones","salado","proteico","limonada"
+Sándwiches,Pollo desmechado,23000,"pollo desmechado","casero","tradicional","jugo natural"
+Sándwiches,Carne desmechada,26000,"carne desmechada,pepino agridulce,cebolla caramelizada","intenso","especial","cerveza"
+Sándwiches,Bacon,25000,"jamón,tocineta ahumada,queso","ahumado,salado","fuerte","coca cola"
+Sándwiches,Vegetariano,22000,"maíz,champiñones,queso","vegetal","vegetariano","smoothie"
+Sándwiches,Atún,26000,"atún,champiñones,queso","marino,salado","proteico","vino blanco"
+Sándwiches,Cerdo,25000,"cañón de cerdo,queso","intenso","especial","cerveza artesanal"
+
+Carnes,Brocheta de cerdo,36000,"cerdo,papas,ensalada,pan","salado","parrilla","cerveza"
+Carnes,Pechuga gratinada,40000,"pollo,champiñones,queso","cremoso","gratinado","vino blanco"
+Carnes,Cañón,39000,"cañón de cerdo,papas,ensalada","jugoso","premium","vino tinto"
+Carnes,Milanesa,39000,"carne apanada,papas","crujiente","clásico","cerveza"
+Carnes,Solomito,42000,"solomito,papas,ensalada","premium","carne fina","merlot"
+Carnes,Salmón,47000,"salmón,camarones,papas,ensalada","marino","premium","vino blanco"
+
+Ensaladas,Ensalada en bowl,30000,"lechuga,queso,tomate,maíz,champiñones,aceitunas,atún o pollo","fresco","saludable","vino rosado"
+
+Adiciones,Adición queso,5000,"queso","cremoso","extra","sandwiches"
+Adiciones,Champiñones,5000,"champiñones","salado","extra","carnes"
+Adiciones,Tocineta,7000,"tocineta","ahumado","extra","maíz especial"
+
+Bebidas,Limonada natural,8500,"limón,azúcar","cítrico","refrescante","carnes"
+Bebidas,Limonada lychee,14500,"lychee,limón","dulce,tropical","especial","ensaladas"
+Bebidas,Coco,15000,"coco,leche en polvo","cremoso,tropical","dulce","postres"
+Bebidas,Cereza,14000,"cereza","dulce","frutal","sandwiches"
+Bebidas,Hierbabuena,10000,"hierbabuena,limón","mentolado","refrescante","mojito"
+Bebidas,Piña hierbabuena,13000,"piña,hierbabuena","tropical","refrescante","salmón"
+Bebidas,Jugo agua,7500,"fruta,agua","natural","ligero","almuerzos"
+Bebidas,Jugo leche,9000,"fruta,leche","cremoso","natural","postres"
+Bebidas,Avena,11500,"avena,leche","cremoso","tradicional","desayunos"
+Bebidas,Milo frío,10500,"milo,leche","dulce","energético","brownie"
+Bebidas,Botella agua,6000,"agua","neutral","hidratación","cualquier comida"
+Bebidas,Soda michelada,9000,"soda,sal,limón","cítrico","refrescante","nachos"
+Bebidas,Soda saborizada,14000,"soda,sal,limón,sirope","dulce,cítrico","especial","sandwiches"
+Bebidas,Batido de proteína,18000,"proteína,leche o agua","proteico","fitness","pollo"

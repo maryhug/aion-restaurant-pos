@@ -34,6 +34,19 @@ function fromRow(row: {
   available: boolean;
   image_url: string | null;
 }): AionDish {
+  let extras: {
+    ingredientes?: string;
+    sabor?: string;
+    perfil?: string;
+    recomendado_con?: string;
+  } = {};
+  if (row.description) {
+    try {
+      extras = JSON.parse(row.description) as typeof extras;
+    } catch {
+      // plain text description, not JSON extras
+    }
+  }
   return {
     id: row.id,
     name: row.name,
@@ -44,6 +57,7 @@ function fromRow(row: {
     available: row.available,
     tags: [],
     imageHint: row.image_url ?? undefined,
+    ...extras,
   };
 }
 

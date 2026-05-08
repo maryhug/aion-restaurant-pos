@@ -16,105 +16,796 @@ const prisma = new PrismaClient({ adapter });
 // ---------------------------------------------------------------------------
 // Datos del menú (exportados de menu_il_cafeto.csv) — no se modifican
 // ---------------------------------------------------------------------------
-const menuItems = [
+function desc(
+  ingredientes: string,
+  sabor: string,
+  perfil: string,
+  recomendado_con: string,
+) {
+  return JSON.stringify({ ingredientes, sabor, perfil, recomendado_con });
+}
+
+type MenuItem = {
+  category: string;
+  name: string;
+  price: number;
+  description: string;
+};
+const menuItems: MenuItem[] = [
   // Smoothies
-  { category: "Smoothies", name: "Mango naranja", price: 16000 },
-  { category: "Smoothies", name: "Fresa naranja limón", price: 16000 },
-  { category: "Smoothies", name: "Fresa naranja banano", price: 16000 },
-  { category: "Smoothies", name: "Piña naranja mora", price: 16000 },
-  { category: "Smoothies", name: "Piña naranja banano", price: 16000 },
+  {
+    category: "Smoothies",
+    name: "Mango naranja",
+    price: 16000,
+    description: desc(
+      "mango,naranja",
+      "dulce,cítrico,tropical",
+      "refrescante,frutal",
+      "sandwich hawaiano,pollo",
+    ),
+  },
+  {
+    category: "Smoothies",
+    name: "Fresa naranja limón",
+    price: 16000,
+    description: desc(
+      "fresa,naranja,limón",
+      "cítrico,dulce",
+      "refrescante",
+      "postres,fresas chantilli",
+    ),
+  },
+  {
+    category: "Smoothies",
+    name: "Fresa naranja banano",
+    price: 16000,
+    description: desc(
+      "fresa,naranja,banano",
+      "dulce,cremoso",
+      "frutal",
+      "brownie,sandwich tradicional",
+    ),
+  },
+  {
+    category: "Smoothies",
+    name: "Piña naranja mora",
+    price: 16000,
+    description: desc(
+      "piña,naranja,mora",
+      "ácido,tropical",
+      "refrescante",
+      "ensaladas,salmón",
+    ),
+  },
+  {
+    category: "Smoothies",
+    name: "Piña naranja banano",
+    price: 16000,
+    description: desc(
+      "piña,naranja,banano",
+      "tropical,cremoso",
+      "frutal",
+      "sandwich hawaiano",
+    ),
+  },
   // Cervezas
-  { category: "Cervezas", name: "BBC", price: 12000 },
-  { category: "Cervezas", name: "3 Cordilleras", price: 12000 },
-  { category: "Cervezas", name: "Club Colombia", price: 9000 },
-  { category: "Cervezas", name: "Corona", price: 12000 },
-  { category: "Cervezas", name: "Stella", price: 12000 },
+  {
+    category: "Cervezas",
+    name: "BBC",
+    price: 12000,
+    description: desc(
+      "malta,lúpulo",
+      "amargo,artesanal",
+      "cerveza artesanal",
+      "carnes,nachos",
+    ),
+  },
+  {
+    category: "Cervezas",
+    name: "3 Cordilleras",
+    price: 12000,
+    description: desc(
+      "malta,lúpulo",
+      "intenso,artesanal",
+      "cerveza fuerte",
+      "brocheta de cerdo",
+    ),
+  },
+  {
+    category: "Cervezas",
+    name: "Club Colombia",
+    price: 9000,
+    description: desc("malta", "suave,balanceado", "lager", "sandwiches"),
+  },
+  {
+    category: "Cervezas",
+    name: "Corona",
+    price: 12000,
+    description: desc(
+      "malta,lúpulo",
+      "ligero,cítrico",
+      "refrescante",
+      "ensaladas,salmón",
+    ),
+  },
+  {
+    category: "Cervezas",
+    name: "Stella",
+    price: 12000,
+    description: desc(
+      "malta,lúpulo",
+      "elegante,seco",
+      "premium lager",
+      "combinado ibérico",
+    ),
+  },
   // Cócteles
-  { category: "Cócteles", name: "Colimocho", price: 28000 },
-  { category: "Cócteles", name: "Tinto de verano", price: 26000 },
-  { category: "Cócteles", name: "Mojito", price: 27000 },
-  { category: "Cócteles", name: "Cuba libre", price: 26000 },
-  { category: "Cócteles", name: "Muller", price: 25000 },
-  { category: "Cócteles", name: "Margarita", price: 26000 },
+  {
+    category: "Cócteles",
+    name: "Colimocho",
+    price: 28000,
+    description: desc(
+      "vino tinto,gaseosa",
+      "dulce,afrutado",
+      "suave",
+      "tapas ibéricas",
+    ),
+  },
+  {
+    category: "Cócteles",
+    name: "Tinto de verano",
+    price: 26000,
+    description: desc(
+      "vino tinto,gaseosa,cítricos",
+      "refrescante,dulce",
+      "ligero",
+      "ensalada,salmón",
+    ),
+  },
+  {
+    category: "Cócteles",
+    name: "Mojito",
+    price: 27000,
+    description: desc(
+      "ron,limón,hierbabuena",
+      "mentolado,cítrico",
+      "refrescante",
+      "cazuelas,nachos",
+    ),
+  },
+  {
+    category: "Cócteles",
+    name: "Cuba libre",
+    price: 26000,
+    description: desc("ron,cola,limón", "dulce,fuerte", "clásico", "carnes"),
+  },
+  {
+    category: "Cócteles",
+    name: "Muller",
+    price: 25000,
+    description: desc("licor,frutas", "dulce,frutal", "suave", "postres"),
+  },
+  {
+    category: "Cócteles",
+    name: "Margarita",
+    price: 26000,
+    description: desc(
+      "tequila,limón",
+      "cítrico,fuerte",
+      "coctel clásico",
+      "nachos",
+    ),
+  },
   // Sangría
-  { category: "Sangría", name: "Copa sangría", price: 25000 },
-  { category: "Sangría", name: "Jarra x2", price: 40000 },
-  { category: "Sangría", name: "Jarra x5", price: 70000 },
+  {
+    category: "Sangría",
+    name: "Copa sangría",
+    price: 25000,
+    description: desc(
+      "vino tinto,fresa,naranja,manzana",
+      "frutal,dulce",
+      "refrescante",
+      "tapas ibéricas",
+    ),
+  },
+  {
+    category: "Sangría",
+    name: "Jarra x2",
+    price: 40000,
+    description: desc(
+      "vino tinto,fresa,naranja,manzana",
+      "frutal,dulce",
+      "compartir",
+      "entradas",
+    ),
+  },
+  {
+    category: "Sangría",
+    name: "Jarra x5",
+    price: 70000,
+    description: desc(
+      "vino tinto,fresa,naranja,manzana",
+      "frutal,dulce",
+      "grupal",
+      "combinado ibérico",
+    ),
+  },
   // Vino
-  { category: "Vino", name: "Vino casa", price: 20000 },
-  { category: "Vino", name: "Vino rosado", price: 22000 },
-  { category: "Vino", name: "Vino blanco", price: 23000 },
-  { category: "Vino", name: "Merlot", price: 25000 },
+  {
+    category: "Vino",
+    name: "Vino casa",
+    price: 20000,
+    description: desc("vino tinto", "seco,frutal", "vino tinto", "carnes"),
+  },
+  {
+    category: "Vino",
+    name: "Vino rosado",
+    price: 22000,
+    description: desc("vino rosado", "suave,dulce", "ligero", "ensaladas"),
+  },
+  {
+    category: "Vino",
+    name: "Vino blanco",
+    price: 23000,
+    description: desc("vino blanco", "cítrico,seco", "refrescante", "salmón"),
+  },
+  {
+    category: "Vino",
+    name: "Merlot",
+    price: 25000,
+    description: desc(
+      "uva merlot",
+      "robusto,frutal",
+      "vino premium",
+      "solomito",
+    ),
+  },
   // Entradas
-  { category: "Entradas", name: "Maíz sencillo", price: 22000 },
-  { category: "Entradas", name: "Maíz especial", price: 28000 },
-  { category: "Entradas", name: "Nachos", price: 18000 },
-  { category: "Entradas", name: "Cazuela pequeña", price: 23000 },
-  { category: "Entradas", name: "Cazuela grande", price: 28500 },
-  { category: "Entradas", name: "Tabla de queso", price: 60000 },
-  { category: "Entradas", name: "Combinado ibérico", price: 75000 },
+  {
+    category: "Entradas",
+    name: "Maíz sencillo",
+    price: 22000,
+    description: desc(
+      "maíz,queso,sal,pimienta",
+      "salado,cremoso",
+      "snack",
+      "cervezas",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Maíz especial",
+    price: 28000,
+    description: desc(
+      "maíz,pollo,tocineta,queso,crema de leche",
+      "cremoso,salado",
+      "abundante",
+      "mojito",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Nachos",
+    price: 18000,
+    description: desc(
+      "nachos,queso cheddar,mozzarella,guacamole",
+      "salado",
+      "mexicano",
+      "margarita",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Cazuela pequeña",
+    price: 23000,
+    description: desc(
+      "pollo o carne desmechada,pico de gallo,queso,nachos",
+      "intenso,salado",
+      "caliente",
+      "cerveza",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Cazuela grande",
+    price: 28500,
+    description: desc(
+      "pollo,carne desmechada,pico de gallo,queso,nachos",
+      "abundante,salado",
+      "compartir",
+      "mojito",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Tabla de queso",
+    price: 60000,
+    description: desc(
+      "quesos,aceitunas,pan",
+      "salado,gourmet",
+      "compartir",
+      "vino",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Combinado ibérico",
+    price: 75000,
+    description: desc(
+      "jamón serrano,chorizo,lomo,queso manchego,aceitunas,pan",
+      "gourmet,salado",
+      "premium",
+      "vino tinto",
+    ),
+  },
+  {
+    category: "Entradas",
+    name: "Tapas ibéricas",
+    price: 35000,
+    description: desc(
+      "jamón serrano,chorizo,lomo,queso manchego,aceitunas,pan",
+      "gourmet",
+      "para compartir",
+      "sangría",
+    ),
+  },
   // Cafés
-  { category: "Cafés", name: "Expreso", price: 5000 },
-  { category: "Cafés", name: "Americano", price: 7000 },
-  { category: "Cafés", name: "Capuchino", price: 8500 },
-  { category: "Cafés", name: "Moka caliente", price: 9000 },
-  { category: "Cafés", name: "Carajillo amaretto", price: 11000 },
-  { category: "Cafés", name: "Carajillo whisky", price: 14000 },
-  { category: "Cafés", name: "Carajillo vino", price: 15000 },
-  { category: "Cafés", name: "Carajillo coñac", price: 11000 },
-  { category: "Cafés", name: "Carajillo ron", price: 9500 },
-  { category: "Cafés", name: "Latte macchiato", price: 15000 },
-  { category: "Cafés", name: "Irlandés", price: 15000 },
-  { category: "Cafés", name: "Café helado", price: 13000 },
-  { category: "Cafés", name: "Moka frío", price: 14500 },
-  { category: "Cafés", name: "Frapuchino", price: 15000 },
-  { category: "Cafés", name: "Aromática tradicional", price: 5000 },
-  { category: "Cafés", name: "Aromática frutos rojos", price: 7000 },
-  { category: "Cafés", name: "Té chai", price: 9000 },
+  {
+    category: "Cafés",
+    name: "Expreso",
+    price: 5000,
+    description: desc("café", "intenso", "energético", "brownie"),
+  },
+  {
+    category: "Cafés",
+    name: "Americano",
+    price: 7000,
+    description: desc("café,agua", "suave", "clásico", "sandwich tradicional"),
+  },
+  {
+    category: "Cafés",
+    name: "Capuchino",
+    price: 8500,
+    description: desc("espresso,leche", "cremoso", "cafetería", "postres"),
+  },
+  {
+    category: "Cafés",
+    name: "Moka caliente",
+    price: 9000,
+    description: desc("café,chocolate,leche", "dulce", "cafetería", "brownie"),
+  },
+  {
+    category: "Cafés",
+    name: "Carajillo amaretto",
+    price: 11000,
+    description: desc("café,amaretto", "dulce,fuerte", "licor café", "postres"),
+  },
+  {
+    category: "Cafés",
+    name: "Carajillo whisky",
+    price: 14000,
+    description: desc("café,whisky", "intenso", "licor café", "carnes"),
+  },
+  {
+    category: "Cafés",
+    name: "Carajillo vino",
+    price: 15000,
+    description: desc(
+      "café,vino",
+      "afrutado",
+      "experimental",
+      "tabla de quesos",
+    ),
+  },
+  {
+    category: "Cafés",
+    name: "Carajillo coñac",
+    price: 11000,
+    description: desc("café,coñac", "fuerte", "licor café", "brownie"),
+  },
+  {
+    category: "Cafés",
+    name: "Carajillo ron",
+    price: 9500,
+    description: desc("café,ron", "dulce", "licor café", "postres"),
+  },
+  {
+    category: "Cafés",
+    name: "Latte macchiato",
+    price: 15000,
+    description: desc(
+      "espresso,leche",
+      "suave,cremoso",
+      "cafetería",
+      "fresas chantilli",
+    ),
+  },
+  {
+    category: "Cafés",
+    name: "Irlandés",
+    price: 15000,
+    description: desc(
+      "café,whisky,crema",
+      "cremoso,fuerte",
+      "premium",
+      "brownie",
+    ),
+  },
+  {
+    category: "Cafés",
+    name: "Café helado",
+    price: 13000,
+    description: desc("café,hielo", "refrescante", "cold coffee", "sandwiches"),
+  },
+  {
+    category: "Cafés",
+    name: "Moka frío",
+    price: 14500,
+    description: desc(
+      "café,chocolate,hielo",
+      "dulce",
+      "cold coffee",
+      "brownie",
+    ),
+  },
+  {
+    category: "Cafés",
+    name: "Frapuchino",
+    price: 15000,
+    description: desc("café,hielo,leche", "dulce,frío", "cafetería", "postres"),
+  },
+  {
+    category: "Cafés",
+    name: "Aromática tradicional",
+    price: 5000,
+    description: desc("hierbas", "suave", "caliente", "postres"),
+  },
+  {
+    category: "Cafés",
+    name: "Aromática frutos rojos",
+    price: 7000,
+    description: desc("frutos rojos", "dulce", "infusión", "fresas chantilli"),
+  },
+  {
+    category: "Cafés",
+    name: "Té chai",
+    price: 9000,
+    description: desc("té,especias,leche", "especiado", "caliente", "postres"),
+  },
   // Postres
-  { category: "Postres", name: "Brownie", price: 14000 },
-  { category: "Postres", name: "Fresas chantilli", price: 15500 },
+  {
+    category: "Postres",
+    name: "Brownie",
+    price: 14000,
+    description: desc(
+      "brownie,chantilli,canela",
+      "dulce,chocolate",
+      "postre caliente",
+      "capuchino",
+    ),
+  },
+  {
+    category: "Postres",
+    name: "Fresas chantilli",
+    price: 15500,
+    description: desc(
+      "fresas,chantilli,lecherita",
+      "dulce,frutal",
+      "postre frío",
+      "latte macchiato",
+    ),
+  },
   // Sándwiches
-  { category: "Sándwiches", name: "Ibérico", price: 35000 },
-  { category: "Sándwiches", name: "IL Cafeto Mixto", price: 26500 },
-  { category: "Sándwiches", name: "Tradicional", price: 20000 },
-  { category: "Sándwiches", name: "Hawaiano", price: 20000 },
-  { category: "Sándwiches", name: "Pollo", price: 26000 },
-  { category: "Sándwiches", name: "Pollo desmechado", price: 23000 },
-  { category: "Sándwiches", name: "Carne desmechada", price: 26000 },
-  { category: "Sándwiches", name: "Bacon", price: 25000 },
-  { category: "Sándwiches", name: "Vegetariano", price: 22000 },
-  { category: "Sándwiches", name: "Atún", price: 26000 },
-  { category: "Sándwiches", name: "Cerdo", price: 25000 },
+  {
+    category: "Sándwiches",
+    name: "Ibérico",
+    price: 35000,
+    description: desc(
+      "jamón serrano,chorizo,lomo,queso manchego,aceitunas",
+      "salado,gourmet",
+      "premium",
+      "vino tinto",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "IL Cafeto Mixto",
+    price: 26500,
+    description: desc(
+      "pollo,carne desmechada,pepino agridulce,cebolla caramelizada,queso",
+      "dulce,salado",
+      "especialidad",
+      "cerveza",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Tradicional",
+    price: 20000,
+    description: desc("jamón,queso,tomate", "clásico", "simple", "americano"),
+  },
+  {
+    category: "Sándwiches",
+    name: "Hawaiano",
+    price: 20000,
+    description: desc(
+      "jamón,piña,queso",
+      "dulce,salado",
+      "tropical",
+      "smoothie",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Pollo",
+    price: 26000,
+    description: desc("pechuga,champiñones", "salado", "proteico", "limonada"),
+  },
+  {
+    category: "Sándwiches",
+    name: "Pollo desmechado",
+    price: 23000,
+    description: desc(
+      "pollo desmechado",
+      "casero",
+      "tradicional",
+      "jugo natural",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Carne desmechada",
+    price: 26000,
+    description: desc(
+      "carne desmechada,pepino agridulce,cebolla caramelizada",
+      "intenso",
+      "especial",
+      "cerveza",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Bacon",
+    price: 25000,
+    description: desc(
+      "jamón,tocineta ahumada,queso",
+      "ahumado,salado",
+      "fuerte",
+      "coca cola",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Vegetariano",
+    price: 22000,
+    description: desc(
+      "maíz,champiñones,queso",
+      "vegetal",
+      "vegetariano",
+      "smoothie",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Atún",
+    price: 26000,
+    description: desc(
+      "atún,champiñones,queso",
+      "marino,salado",
+      "proteico",
+      "vino blanco",
+    ),
+  },
+  {
+    category: "Sándwiches",
+    name: "Cerdo",
+    price: 25000,
+    description: desc(
+      "cañón de cerdo,queso",
+      "intenso",
+      "especial",
+      "cerveza artesanal",
+    ),
+  },
   // Carnes
-  { category: "Carnes", name: "Brocheta de cerdo", price: 36000 },
-  { category: "Carnes", name: "Pechuga gratinada", price: 40000 },
-  { category: "Carnes", name: "Cañón", price: 39000 },
-  { category: "Carnes", name: "Milanesa", price: 39000 },
-  { category: "Carnes", name: "Solomito", price: 42000 },
-  { category: "Carnes", name: "Salmón", price: 47000 },
+  {
+    category: "Carnes",
+    name: "Brocheta de cerdo",
+    price: 36000,
+    description: desc(
+      "cerdo,papas,ensalada,pan",
+      "salado",
+      "parrilla",
+      "cerveza",
+    ),
+  },
+  {
+    category: "Carnes",
+    name: "Pechuga gratinada",
+    price: 40000,
+    description: desc(
+      "pollo,champiñones,queso",
+      "cremoso",
+      "gratinado",
+      "vino blanco",
+    ),
+  },
+  {
+    category: "Carnes",
+    name: "Cañón",
+    price: 39000,
+    description: desc(
+      "cañón de cerdo,papas,ensalada",
+      "jugoso",
+      "premium",
+      "vino tinto",
+    ),
+  },
+  {
+    category: "Carnes",
+    name: "Milanesa",
+    price: 39000,
+    description: desc("carne apanada,papas", "crujiente", "clásico", "cerveza"),
+  },
+  {
+    category: "Carnes",
+    name: "Solomito",
+    price: 42000,
+    description: desc(
+      "solomito,papas,ensalada",
+      "premium",
+      "carne fina",
+      "merlot",
+    ),
+  },
+  {
+    category: "Carnes",
+    name: "Salmón",
+    price: 47000,
+    description: desc(
+      "salmón,camarones,papas,ensalada",
+      "marino",
+      "premium",
+      "vino blanco",
+    ),
+  },
   // Ensaladas
-  { category: "Ensaladas", name: "Ensalada en bowl", price: 30000 },
+  {
+    category: "Ensaladas",
+    name: "Ensalada en bowl",
+    price: 30000,
+    description: desc(
+      "lechuga,queso,tomate,maíz,champiñones,aceitunas,atún o pollo",
+      "fresco",
+      "saludable",
+      "vino rosado",
+    ),
+  },
   // Adiciones
-  { category: "Adiciones", name: "Adición queso", price: 5000 },
-  { category: "Adiciones", name: "Champiñones", price: 5000 },
-  { category: "Adiciones", name: "Tocineta", price: 7000 },
+  {
+    category: "Adiciones",
+    name: "Adición queso",
+    price: 5000,
+    description: desc("queso", "cremoso", "extra", "sandwiches"),
+  },
+  {
+    category: "Adiciones",
+    name: "Champiñones",
+    price: 5000,
+    description: desc("champiñones", "salado", "extra", "carnes"),
+  },
+  {
+    category: "Adiciones",
+    name: "Tocineta",
+    price: 7000,
+    description: desc("tocineta", "ahumado", "extra", "maíz especial"),
+  },
   // Bebidas
-  { category: "Bebidas", name: "Limonada natural", price: 8500 },
-  { category: "Bebidas", name: "Limonada lychee", price: 14500 },
-  { category: "Bebidas", name: "Coco", price: 15000 },
-  { category: "Bebidas", name: "Cereza", price: 14000 },
-  { category: "Bebidas", name: "Hierbabuena", price: 10000 },
-  { category: "Bebidas", name: "Piña hierbabuena", price: 13000 },
-  { category: "Bebidas", name: "Jugo agua", price: 7500 },
-  { category: "Bebidas", name: "Jugo leche", price: 9000 },
-  { category: "Bebidas", name: "Avena", price: 11500 },
-  { category: "Bebidas", name: "Milo frío", price: 10500 },
-  { category: "Bebidas", name: "Botella agua", price: 6000 },
-  { category: "Bebidas", name: "Soda michelada", price: 9000 },
-  { category: "Bebidas", name: "Soda saborizada", price: 14000 },
-  { category: "Bebidas", name: "Batido de proteína", price: 18000 },
-] as const;
+  {
+    category: "Bebidas",
+    name: "Limonada natural",
+    price: 8500,
+    description: desc("limón,azúcar", "cítrico", "refrescante", "carnes"),
+  },
+  {
+    category: "Bebidas",
+    name: "Limonada lychee",
+    price: 14500,
+    description: desc(
+      "lychee,limón",
+      "dulce,tropical",
+      "especial",
+      "ensaladas",
+    ),
+  },
+  {
+    category: "Bebidas",
+    name: "Coco",
+    price: 15000,
+    description: desc(
+      "coco,leche en polvo",
+      "cremoso,tropical",
+      "dulce",
+      "postres",
+    ),
+  },
+  {
+    category: "Bebidas",
+    name: "Cereza",
+    price: 14000,
+    description: desc("cereza", "dulce", "frutal", "sandwiches"),
+  },
+  {
+    category: "Bebidas",
+    name: "Hierbabuena",
+    price: 10000,
+    description: desc(
+      "hierbabuena,limón",
+      "mentolado",
+      "refrescante",
+      "mojito",
+    ),
+  },
+  {
+    category: "Bebidas",
+    name: "Piña hierbabuena",
+    price: 13000,
+    description: desc("piña,hierbabuena", "tropical", "refrescante", "salmón"),
+  },
+  {
+    category: "Bebidas",
+    name: "Jugo agua",
+    price: 7500,
+    description: desc("fruta,agua", "natural", "ligero", "almuerzos"),
+  },
+  {
+    category: "Bebidas",
+    name: "Jugo leche",
+    price: 9000,
+    description: desc("fruta,leche", "cremoso", "natural", "postres"),
+  },
+  {
+    category: "Bebidas",
+    name: "Avena",
+    price: 11500,
+    description: desc("avena,leche", "cremoso", "tradicional", "desayunos"),
+  },
+  {
+    category: "Bebidas",
+    name: "Milo frío",
+    price: 10500,
+    description: desc("milo,leche", "dulce", "energético", "brownie"),
+  },
+  {
+    category: "Bebidas",
+    name: "Botella agua",
+    price: 6000,
+    description: desc("agua", "neutral", "hidratación", "cualquier comida"),
+  },
+  {
+    category: "Bebidas",
+    name: "Soda michelada",
+    price: 9000,
+    description: desc("soda,sal,limón", "cítrico", "refrescante", "nachos"),
+  },
+  {
+    category: "Bebidas",
+    name: "Soda saborizada",
+    price: 14000,
+    description: desc(
+      "soda,sal,limón,sirope",
+      "dulce,cítrico",
+      "especial",
+      "sandwiches",
+    ),
+  },
+  {
+    category: "Bebidas",
+    name: "Batido de proteína",
+    price: 18000,
+    description: desc("proteína,leche o agua", "proteico", "fitness", "pollo"),
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -257,7 +948,11 @@ async function main() {
     if (existing) {
       await prisma.menu_items.update({
         where: { id: existing.id },
-        data: { price: item.price, category: item.category },
+        data: {
+          price: item.price,
+          category: item.category,
+          description: item.description,
+        },
       });
       menuUpdated++;
     } else {
@@ -268,6 +963,7 @@ async function main() {
           price: item.price,
           category: item.category,
           available: true,
+          description: item.description,
         },
       });
       menuCreated++;

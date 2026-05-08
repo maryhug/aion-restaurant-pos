@@ -24,6 +24,10 @@ export interface AionDish {
   available: boolean;
   tags: string[];
   imageHint?: string;
+  ingredientes?: string;
+  sabor?: string;
+  perfil?: string;
+  recomendado_con?: string;
 }
 
 export type OrderState = "pendiente" | "preparando" | "listo";
