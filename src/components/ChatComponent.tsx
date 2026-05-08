@@ -213,7 +213,7 @@ export default function Chat({
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 self-start rounded-tl-none"
               }`}
             >
-              <p className="whitespace-pre-wrap">{m.content}</p>
+              <p className="whitespace-pre-wrap break-words">{m.content}</p>
             </div>
           ))}
           {isLoading && (

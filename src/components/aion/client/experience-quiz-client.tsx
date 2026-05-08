@@ -514,7 +514,12 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
 
           {showChat && (
             <div className="fixed inset-0 z-50">
-              <Chat inline defaultOpen onClose={() => setShowChat(false)} />
+              <Chat
+                inline
+                defaultOpen
+                onClose={() => setShowChat(false)}
+                contextData={answers}
+              />
             </div>
           )}
         </section>
