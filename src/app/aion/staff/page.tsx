@@ -25,15 +25,6 @@ function minutesAgo(createdAt: string) {
   );
 }
 
-const demoNames = [
-  "María García",
-  "Carlos López",
-  "Ana Martínez",
-  "Sofía Ramírez",
-  "David Torres",
-  "Laura Gómez",
-];
-
 const statusTitles: Record<OrderStatus, string> = {
   pending: "Pendiente",
   preparing: "Preparando",
@@ -74,7 +65,10 @@ export default function AionStaffDashboardPage() {
       const data = (await res.json()) as {
         orders: {
           id: string;
+          code: string;
+          customerName: string;
           status: OrderStatus;
+          createdAt: string;
           tableLabel: string;
           waitLabel: string;
           urgent?: boolean;
@@ -82,15 +76,15 @@ export default function AionStaffDashboardPage() {
         }[];
       };
 
-      const mapped: StaffOrder[] = data.orders.map((o, idx) => {
+      const mapped: StaffOrder[] = data.orders.map((o) => {
         const elapsedMin = Number(o.waitLabel.replace(/\D/g, "")) || 0;
         return {
           id: o.id,
-          code: `ORD-${String(idx + 1).padStart(3, "0")}`,
-          customerName: demoNames[idx % demoNames.length],
+          code: o.code,
+          customerName: o.customerName,
           status: o.status,
           table: o.tableLabel,
-          createdAt: new Date(Date.now() - elapsedMin * 60000).toISOString(),
+          createdAt: o.createdAt,
           isNew: o.status === "pending" && elapsedMin < 2,
           urgent: Boolean(o.urgent),
           items: o.items.map((item) => ({

@@ -126,15 +126,24 @@ export default function Chat({
       <div
         className={
           inline
-            ? "absolute inset-0 rounded-3xl flex flex-col z-50 animate-in fade-in zoom-in-95 bg-white/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-white/50"
+            ? "fixed inset-x-0 bottom-5 z-50 mx-auto flex h-[72vh] min-h-[420px] w-[min(92vw,420px)] max-h-[760px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
             : "fixed bottom-24 right-6 w-96 max-w-[90vw] h-[500px] bg-white dark:bg-zinc-900 border dark:border-zinc-700 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
+        }
+        style={
+          inline
+            ? {
+                transformOrigin: "bottom center",
+                animation:
+                  "aionChatPopIn 460ms cubic-bezier(0.22, 1, 0.36, 1), aionChatFloat 3.8s ease-in-out 520ms infinite, aionChatGlow 3.2s ease-in-out 520ms infinite",
+              }
+            : undefined
         }
       >
         {/* Botón X para cerrar en modo inline */}
         {inline && (
           <button
             onClick={() => onClose?.()}
-            className="absolute top-4 right-4 z-50 p-2 text-zinc-500 hover:text-zinc-800 bg-white/50 hover:bg-white/80 rounded-full transition-colors"
+            className="absolute right-3 top-3 z-50 rounded-full bg-stone-100 p-2 text-zinc-500 transition-colors hover:bg-stone-200 hover:text-zinc-800"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -155,16 +164,23 @@ export default function Chat({
         )}
 
         {/* Cabecera */}
-        {!inline && (
-          <div className="bg-blue-600 p-4 text-white font-bold flex justify-between items-center">
+        {!inline ? (
+          <div className="flex items-center justify-between bg-blue-600 p-4 font-bold text-white">
             <span>Asistente de Comida</span>
             <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-3">
+            <span className="text-sm font-bold text-zinc-800">
+              Hablar con el chef
+            </span>
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
           </div>
         )}
 
         {/* Mensajes */}
         <div
-          className={`flex-1 overflow-y-auto p-4 flex flex-col gap-3 ${inline ? "pt-14" : ""}`}
+          className={`flex flex-1 flex-col gap-3 overflow-y-auto p-4 ${inline ? "pt-3" : ""}`}
         >
           {messages.length === 0 && (
             <p className="text-center text-zinc-700 font-bold mt-6 text-sm px-4 drop-shadow-sm">
@@ -239,4 +255,30 @@ export default function Chat({
       </div>
     </>
   );
+}
+
+if (
+  typeof window !== "undefined" &&
+  !document.getElementById("aion-chat-animations")
+) {
+  const style = document.createElement("style");
+  style.id = "aion-chat-animations";
+  style.textContent = `
+    @keyframes aionChatPopIn {
+      0% { opacity: 0; transform: translateY(18px) scale(0.9); }
+      65% { opacity: 1; transform: translateY(-3px) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes aionChatFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @keyframes aionChatGlow {
+      0%, 100% { box-shadow: 0 22px 45px rgba(0,0,0,0.16); }
+      50% { box-shadow: 0 26px 52px rgba(168, 85, 247, 0.18); }
+    }
+  `;
+  document.head.appendChild(style);
 }

@@ -498,7 +498,9 @@ export function AionExperienceQuizClient({ menuItems }: Props) {
               }}
             >
               <span aria-hidden></span>{" "}
-              {chatOpen ? "Cerrar" : "Hablar con el Cheff"}
+              {chatOpen
+                ? "Cerrar Cheff Virtual"
+                : "Hablar con el Cheff Virtual"}
             </button>
 
             <Link
