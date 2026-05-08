@@ -108,7 +108,6 @@ export default async function CazuelaPlatoDetailPage({ params }: Props) {
             dishId={dish.id}
             dishName={dish.name}
             dishPrice={dish.price}
-            dishCategory={dish.category}
             available={dish.available}
             label={dish.name}
           />

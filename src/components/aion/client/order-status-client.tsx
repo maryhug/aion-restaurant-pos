@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { aion } from "@/lib/aion/tokens";
+import type { TokenShape } from "@/lib/aion/token-types";
 import type { OrderStatus } from "@/types/database";
 
 type ApiOrder = {
@@ -14,7 +15,16 @@ type ApiOrder = {
 
 const states: OrderStatus[] = ["pending", "preparing", "ready", "delivered"];
 
-export function AionOrderStatusClient({ orderId }: { orderId: string }) {
+export function AionOrderStatusClient({
+  orderId,
+  basePath = "/aion",
+  tokens,
+}: {
+  orderId: string;
+  basePath?: string;
+  tokens?: TokenShape;
+}) {
+  const colors = tokens?.colors ?? aion.colors;
   const [order, setOrder] = useState<ApiOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,26 +63,23 @@ export function AionOrderStatusClient({ orderId }: { orderId: string }) {
   return (
     <div
       className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6"
-      style={{ background: aion.colors.pageBg }}
+      style={{ background: colors.pageBg }}
     >
       <header className="mb-4">
         <Link
-          href="/aion"
+          href={basePath}
           className="text-sm font-bold"
-          style={{ color: aion.colors.primary }}
+          style={{ color: colors.primary }}
         >
           ← Inicio
         </Link>
         <h1
           className="mt-2 text-2xl font-black"
-          style={{ color: aion.colors.primary }}
+          style={{ color: colors.primary }}
         >
           Estado del pedido
         </h1>
-        <p
-          className="text-xs font-semibold"
-          style={{ color: aion.colors.muted }}
-        >
+        <p className="text-xs font-semibold" style={{ color: colors.muted }}>
           Orden: {orderId}
         </p>
       </header>
@@ -99,18 +106,13 @@ export function AionOrderStatusClient({ orderId }: { orderId: string }) {
                     className={`inline-block size-3 rounded-full ${active ? "animate-pulse" : ""}`}
                     style={{
                       background:
-                        active || done
-                          ? aion.colors.primary
-                          : aion.colors.border,
+                        active || done ? colors.primary : colors.border,
                     }}
                   />
                   <span
                     className="text-sm font-semibold capitalize"
                     style={{
-                      color:
-                        active || done
-                          ? aion.colors.primary
-                          : aion.colors.muted,
+                      color: active || done ? colors.primary : colors.muted,
                     }}
                   >
                     {state}
@@ -125,7 +127,7 @@ export function AionOrderStatusClient({ orderId }: { orderId: string }) {
       <div className="mt-4 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-black/5">
         <h2
           className="text-base font-extrabold"
-          style={{ color: aion.colors.primary }}
+          style={{ color: colors.primary }}
         >
           Items del pedido
         </h2>
@@ -140,7 +142,7 @@ export function AionOrderStatusClient({ orderId }: { orderId: string }) {
               </span>
               <span
                 className="text-sm font-bold"
-                style={{ color: aion.colors.primary }}
+                style={{ color: colors.primary }}
               >
                 ${(item.quantity * item.unit_price).toLocaleString("es-CO")}
               </span>

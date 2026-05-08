@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { aion } from "@/lib/aion/tokens";
+import type { TokenShape } from "@/lib/aion/token-types";
 import type { AionCategoryId, AionDish } from "@/lib/aion/types";
 import { aionCategoryLabels } from "@/data/aion-dishes";
 import { AionMenuCard } from "@/components/aion/client/menu-card";
@@ -26,7 +27,16 @@ const categories: { id: AionCategoryId; label: string }[] = [
   { id: "sándwiches", label: "Sándwiches" },
 ];
 
-export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
+export function AionMenuPageClient({
+  dishes,
+  basePath = "/aion",
+  tokens,
+}: {
+  dishes: AionDish[];
+  basePath?: string;
+  tokens?: TokenShape;
+}) {
+  const colors = tokens?.colors ?? aion.colors;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<AionCategoryId>("todos");
   const { lineCount } = useAionCart();
@@ -46,19 +56,19 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
   return (
     <div
       className="pb-8"
-      style={{ background: aion.colors.pageBg, minHeight: "100dvh" }}
+      style={{ background: colors.pageBg, minHeight: "100dvh" }}
     >
       <div className="mx-auto max-w-xl px-4">
         <header className="flex items-center justify-between pt-3">
           <Link
-            href="/aion"
+            href={basePath}
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5"
             aria-label="Volver"
           >
             ←
           </Link>
           <Link
-            href="/aion/cliente/carrito"
+            href={`${basePath}/cliente/carrito`}
             className="relative grid size-8 place-items-center rounded-full bg-white text-stone-800 shadow-sm ring-1 ring-black/5"
             aria-label="Abrir carrito"
           >
@@ -66,7 +76,7 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
             {lineCount > 0 ? (
               <span
                 className="absolute -right-1 -top-1 min-w-4 rounded-full px-1 text-center text-[10px] font-bold text-white"
-                style={{ background: aion.colors.primary }}
+                style={{ background: colors.primary }}
               >
                 {lineCount > 99 ? "99+" : lineCount}
               </span>
@@ -76,7 +86,7 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
 
         <h1
           className="mt-3 text-3xl font-black leading-none"
-          style={{ color: aion.colors.primary }}
+          style={{ color: colors.primary }}
         >
           Nuestro menú
         </h1>
@@ -90,7 +100,7 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="w-full rounded-2xl border-0 py-2.5 pl-9 pr-3 text-sm shadow-sm ring-1 ring-black/5"
-            style={{ background: aion.colors.white, color: aion.colors.text }}
+            style={{ background: colors.white, color: colors.text }}
             placeholder="Buscar..."
             type="search"
             autoComplete="off"
@@ -115,12 +125,12 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
                 style={
                   active
                     ? {
-                        background: aion.colors.primary,
-                        color: aion.colors.white,
+                        background: colors.primary,
+                        color: colors.white,
                       }
                     : {
-                        background: aion.colors.pillInactive,
-                        color: aion.colors.text,
+                        background: colors.pillInactive,
+                        color: colors.text,
                       }
                 }
               >
@@ -134,7 +144,7 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
       {list.length === 0 ? (
         <p
           className="px-4 py-6 text-center text-sm"
-          style={{ color: aion.colors.muted }}
+          style={{ color: colors.muted }}
         >
           {q.trim() ? "Sin resultados" : "No hay platos en esta categoría"}
         </p>
@@ -147,7 +157,7 @@ export function AionMenuPageClient({ dishes }: { dishes: AionDish[] }) {
             <li key={d.id}>
               <AionMenuCard
                 dish={d}
-                hrefDetail={`/aion/cliente/plato/${d.id}`}
+                hrefDetail={`${basePath}/cliente/plato/${d.id}`}
               />
             </li>
           ))}

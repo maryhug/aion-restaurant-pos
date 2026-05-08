@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { aion } from "@/lib/aion/tokens";
+import type { TokenShape } from "@/lib/aion/token-types";
 import type { MenuItem } from "@/types/database";
 import { useAionOrder } from "@/lib/aion/order-context";
 import {
@@ -15,6 +16,8 @@ import {
 type Props = {
   menuItems: MenuItem[];
   restaurantId: string | null;
+  basePath?: string;
+  tokens?: TokenShape;
 };
 
 type Phase = "review" | "checkout";
@@ -39,7 +42,13 @@ function validate(p: {
   return e;
 }
 
-export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
+export function AionPreOrderClient({
+  menuItems,
+  restaurantId,
+  basePath = "/aion",
+  tokens,
+}: Props) {
+  const colors = tokens?.colors ?? aion.colors;
   const router = useRouter();
   const { items, addMenuItem, removeItem } = useAionOrder();
   const [phase, setPhase] = useState<Phase>("review");
@@ -159,7 +168,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
       };
       savePreorderMeta(meta as PreorderMeta);
       router.push(
-        `/aion/cliente/confirmacion?ref=${encodeURIComponent(orderRef)}`,
+        `${basePath}/cliente/confirmacion?ref=${encodeURIComponent(orderRef)}`,
       );
     } catch (err) {
       setError(
@@ -175,7 +184,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
   return (
     <div
       className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6"
-      style={{ background: aion.colors.pageBg }}
+      style={{ background: colors.pageBg }}
     >
       <header className="mb-4 flex items-center justify-between">
         <div>
@@ -184,22 +193,22 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
               type="button"
               onClick={() => setPhase("review")}
               className="text-sm font-bold"
-              style={{ color: aion.colors.primary }}
+              style={{ color: colors.primary }}
             >
               ← Volver
             </button>
           ) : (
             <Link
-              href="/aion/cliente/experiencia"
+              href={`${basePath}/cliente/experiencia`}
               className="text-sm font-bold"
-              style={{ color: aion.colors.primary }}
+              style={{ color: colors.primary }}
             >
               ← Volver
             </Link>
           )}
           <h1
             className="mt-2 text-2xl font-black"
-            style={{ color: aion.colors.primary }}
+            style={{ color: colors.primary }}
           >
             {phase === "review" ? "Pre-orden" : "Fecha, hora y mesa"}
           </h1>
@@ -211,13 +220,13 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
         <>
           {items.length === 0 ? (
             <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
-              <p className="text-sm" style={{ color: aion.colors.muted }}>
+              <p className="text-sm" style={{ color: colors.muted }}>
                 No tienes platos seleccionados todavía.
               </p>
               <Link
-                href="/aion/cliente/experiencia"
+                href={`${basePath}/cliente/experiencia`}
                 className="mt-3 inline-block text-sm font-bold"
-                style={{ color: aion.colors.primary }}
+                style={{ color: colors.primary }}
               >
                 Ir a experiencia
               </Link>
@@ -245,22 +254,22 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                     <div className="min-w-0 flex-1">
                       <p
                         className="text-sm font-bold"
-                        style={{ color: aion.colors.text }}
+                        style={{ color: colors.text }}
                       >
                         {item.name}
                       </p>
                       <span
                         className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
                         style={{
-                          background: aion.colors.tagBg,
-                          color: aion.colors.primary,
+                          background: colors.tagBg,
+                          color: colors.primary,
                         }}
                       >
                         {item.category}
                       </span>
                       <p
                         className="mt-1 text-sm font-extrabold"
-                        style={{ color: aion.colors.primary }}
+                        style={{ color: colors.primary }}
                       >
                         ${item.unit_price.toLocaleString("es-CO")}
                       </p>
@@ -269,7 +278,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                       type="button"
                       onClick={() => removeItem(item.menu_item_id)}
                       className="text-xs font-bold"
-                      style={{ color: aion.colors.danger }}
+                      style={{ color: colors.danger }}
                     >
                       Quitar
                     </button>
@@ -285,8 +294,8 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
               onClick={() => setOpenSheet(true)}
               className="w-full rounded-2xl py-2.5 text-sm font-bold transition-all duration-300 ease-in-out"
               style={{
-                background: aion.colors.pillInactive,
-                color: aion.colors.text,
+                background: colors.pillInactive,
+                color: colors.text,
               }}
             >
               + Agregar más platos
@@ -294,13 +303,13 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             <div className="mt-3 flex items-center justify-between">
               <p
                 className="text-sm font-semibold"
-                style={{ color: aion.colors.muted }}
+                style={{ color: colors.muted }}
               >
                 Total acumulado
               </p>
               <p
                 className="text-lg font-black"
-                style={{ color: aion.colors.primary }}
+                style={{ color: colors.primary }}
               >
                 ${total.toLocaleString("es-CO")}
               </p>
@@ -313,7 +322,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
               disabled={items.length === 0}
               onClick={() => setPhase("checkout")}
               className="mt-3 w-full rounded-2xl py-3 text-sm font-bold text-white transition-all duration-300 ease-in-out disabled:opacity-50"
-              style={{ background: aion.colors.primary }}
+              style={{ background: colors.primary }}
             >
               Confirmar pedido
             </button>
@@ -328,7 +337,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
           <div>
             <label
               className="mb-1 block text-xs font-medium"
-              style={{ color: aion.colors.muted }}
+              style={{ color: colors.muted }}
             >
               Nombre para la reserva
             </label>
@@ -350,7 +359,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
           <div>
             <label
               className="mb-1 block text-xs font-medium"
-              style={{ color: aion.colors.muted }}
+              style={{ color: colors.muted }}
             >
               Email
             </label>
@@ -374,7 +383,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             <div>
               <label
                 className="mb-1 block text-xs font-medium"
-                style={{ color: aion.colors.muted }}
+                style={{ color: colors.muted }}
               >
                 Fecha
               </label>
@@ -396,7 +405,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             <div>
               <label
                 className="mb-1 block text-xs font-medium"
-                style={{ color: aion.colors.muted }}
+                style={{ color: colors.muted }}
               >
                 Hora
               </label>
@@ -417,7 +426,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             <div>
               <label
                 className="mb-1 block text-xs font-medium"
-                style={{ color: aion.colors.muted }}
+                style={{ color: colors.muted }}
               >
                 Personas
               </label>
@@ -442,8 +451,8 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             disabled={tablesLoading || !date || !time}
             className="w-full rounded-2xl py-2.5 text-sm font-bold disabled:opacity-50"
             style={{
-              background: aion.colors.pillInactive,
-              color: aion.colors.text,
+              background: colors.pillInactive,
+              color: colors.text,
             }}
           >
             {tablesLoading ? "Buscando…" : "Ver mesas disponibles"}
@@ -460,7 +469,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                 <div>
                   <p
                     className="mb-2 text-xs font-medium"
-                    style={{ color: aion.colors.muted }}
+                    style={{ color: colors.muted }}
                   >
                     Selecciona una mesa
                   </p>
@@ -477,20 +486,20 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                         style={
                           tableId === t.id
                             ? {
-                                borderColor: aion.colors.primary,
+                                borderColor: colors.primary,
                                 background: "#FFF5F7",
-                                color: aion.colors.primary,
+                                color: colors.primary,
                               }
                             : {
                                 borderColor: "#e7e5e4",
-                                color: aion.colors.text,
+                                color: colors.text,
                               }
                         }
                       >
                         Mesa {t.number}
                         <span
                           className="block text-xs"
-                          style={{ color: aion.colors.muted }}
+                          style={{ color: colors.muted }}
                         >
                           {t.capacity} personas
                         </span>
@@ -509,7 +518,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
 
           {/* Resumen */}
           <div className="rounded-2xl bg-white p-3 text-sm ring-1 ring-black/5">
-            <p className="font-semibold" style={{ color: aion.colors.muted }}>
+            <p className="font-semibold" style={{ color: colors.muted }}>
               Tu preorden
             </p>
             <ul className="mt-2 space-y-1">
@@ -529,7 +538,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             </ul>
             <p
               className="mt-2 flex justify-between border-t border-stone-100 pt-2 text-sm font-extrabold"
-              style={{ color: aion.colors.primary }}
+              style={{ color: colors.primary }}
             >
               <span>Total</span>
               <span>${total.toLocaleString("es-CO")}</span>
@@ -542,7 +551,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             type="submit"
             disabled={saving || !tableId}
             className="w-full rounded-2xl py-3 text-sm font-bold text-white disabled:opacity-50"
-            style={{ background: aion.colors.primary }}
+            style={{ background: colors.primary }}
           >
             {saving ? "Confirmando…" : "Confirmar reserva y preorden"}
           </button>
@@ -556,7 +565,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
             <div className="mb-2 flex items-center justify-between">
               <h2
                 className="text-lg font-extrabold"
-                style={{ color: aion.colors.primary }}
+                style={{ color: colors.primary }}
               >
                 Añadir platos
               </h2>
@@ -565,8 +574,8 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                 onClick={() => setOpenSheet(false)}
                 className="rounded-full px-3 py-1 text-sm font-bold"
                 style={{
-                  background: aion.colors.pillInactive,
-                  color: aion.colors.text,
+                  background: colors.pillInactive,
+                  color: colors.text,
                 }}
               >
                 Cerrar
@@ -579,7 +588,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                   className="rounded-2xl border border-stone-100 p-3"
                 >
                   <p className="text-sm font-bold">{item.name}</p>
-                  <p className="text-xs" style={{ color: aion.colors.muted }}>
+                  <p className="text-xs" style={{ color: colors.muted }}>
                     {item.category}
                   </p>
                   <div className="mt-2 flex items-center justify-between">
@@ -589,7 +598,7 @@ export function AionPreOrderClient({ menuItems, restaurantId }: Props) {
                     <button
                       type="button"
                       className="rounded-xl px-3 py-1 text-xs font-bold text-white"
-                      style={{ background: aion.colors.primary }}
+                      style={{ background: colors.primary }}
                       onClick={() => addMenuItem(item)}
                     >
                       Agregar

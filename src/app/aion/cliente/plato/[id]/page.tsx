@@ -49,12 +49,75 @@ export default async function AionPlatoDetailPage({ params }: Props) {
         >
           {dish.name}
         </h1>
-        <p
-          className="mt-2 text-sm leading-relaxed"
-          style={{ color: aion.colors.muted }}
-        >
-          {dish.description}
-        </p>
+        {dish.ingredientes ? (
+          <div className="mt-3 space-y-2.5">
+            <div>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: aion.colors.primaryAlt }}
+              >
+                Ingredientes
+              </p>
+              <p
+                className="mt-0.5 text-sm"
+                style={{ color: aion.colors.muted }}
+              >
+                {dish.ingredientes}
+              </p>
+            </div>
+            {dish.sabor && (
+              <div className="flex flex-wrap gap-1.5">
+                {dish.sabor.split(",").map((s) => (
+                  <span
+                    key={s}
+                    className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700"
+                  >
+                    {s.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
+            {dish.perfil && (
+              <div>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wide"
+                  style={{ color: aion.colors.primaryAlt }}
+                >
+                  Perfil
+                </p>
+                <p
+                  className="mt-0.5 text-sm"
+                  style={{ color: aion.colors.muted }}
+                >
+                  {dish.perfil}
+                </p>
+              </div>
+            )}
+            {dish.recomendado_con && (
+              <div>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wide"
+                  style={{ color: aion.colors.primaryAlt }}
+                >
+                  Ideal con
+                </p>
+                <p
+                  className="mt-0.5 text-sm"
+                  style={{ color: aion.colors.muted }}
+                >
+                  {dish.recomendado_con}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p
+            className="mt-2 text-sm leading-relaxed"
+            style={{ color: aion.colors.muted }}
+          >
+            {dish.description}
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span
             className="inline-flex items-center gap-1.5 text-xs"
