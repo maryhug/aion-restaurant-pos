@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { inputCls } from "@/features/admin/components/modal";
 import { applyTenantTheme } from "@/features/admin/helpers";
+import {
+  BuildingStorefrontIcon,
+  CogIcon,
+  UsersIcon,
+  UserCircleIcon,
+} from "@/features/admin/components/icons";
 
 type ConfigData = {
   restaurantId: string;
@@ -24,7 +30,6 @@ type ConfigData = {
 };
 
 const ITEMS_PER_PAGE = 5;
-
 const CURRENCIES = ["COP", "USD", "EUR"];
 const TIMEZONES = [
   "America/Bogota",
@@ -55,12 +60,68 @@ type OrgUser = {
 const EMPTY_USER_FORM = { name: "", email: "", password: "", role: "staff" };
 
 type ConfigTab = "perfil" | "branding" | "preferencias" | "usuarios";
-const CONFIG_TABS: { id: ConfigTab; label: string }[] = [
-  { id: "perfil", label: "Perfil" },
-  { id: "branding", label: "Branding" },
-  { id: "preferencias", label: "Preferencias" },
-  { id: "usuarios", label: "Usuarios" },
+const CONFIG_TABS: { id: ConfigTab; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "perfil",
+    label: "Perfil",
+    icon: <BuildingStorefrontIcon className="h-4 w-4" />,
+  },
+  { id: "branding", label: "Branding", icon: <CogIcon className="h-4 w-4" /> },
+  {
+    id: "preferencias",
+    label: "Preferencias",
+    icon: <CogIcon className="h-4 w-4" />,
+  },
+  {
+    id: "usuarios",
+    label: "Usuarios",
+    icon: <UsersIcon className="h-4 w-4" />,
+  },
 ];
+
+/* ─── Section header ────────────────────────────────────────── */
+
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      <span
+        className="flex h-8 w-8 items-center justify-center rounded-xl [&>svg]:h-4 [&>svg]:w-4"
+        style={{
+          backgroundColor:
+            "color-mix(in srgb, var(--admin-primary,#581c22) 12%, transparent)",
+          color: "var(--admin-primary,#581c22)",
+        }}
+      >
+        {icon}
+      </span>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-stone-500">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+/* ─── Save button ───────────────────────────────────────────── */
+
+function SaveBtn({ saving, label }: { saving: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={saving}
+      className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+    >
+      {saving ? "Guardando…" : label}
+    </button>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────── */
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -69,7 +130,6 @@ export default function AdminSettingsPage() {
     { id: string; name: string; city: string }[]
   >([]);
 
-  // User management
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [userForm, setUserForm] = useState(EMPTY_USER_FORM);
   const [savingUser, setSavingUser] = useState(false);
@@ -186,24 +246,32 @@ export default function AdminSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-stone-400">
-        Cargando configuración…
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-2xl bg-stone-100"
+          />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
         {CONFIG_TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setConfigTab(t.id)}
-            className={`rounded-xl px-3 py-2 text-sm capitalize ${
-              configTab === t.id ? "bg-black text-white" : "border bg-white"
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              configTab === t.id
+                ? "bg-[var(--admin-primary,#581c22)] text-white"
+                : "text-stone-600 hover:bg-stone-100"
             }`}
           >
+            {t.icon}
             {t.label}
           </button>
         ))}
@@ -211,8 +279,11 @@ export default function AdminSettingsPage() {
 
       {/* Tab: Perfil */}
       {configTab === "perfil" && (
-        <article className="rounded-2xl border border-black/5 bg-white p-4">
-          <h3 className="mb-3 font-bold">Perfil del restaurante</h3>
+        <section className="rounded-2xl bg-white p-5 shadow-sm md:p-6">
+          <SectionHeader
+            icon={<BuildingStorefrontIcon />}
+            title="Perfil del restaurante"
+          />
           <form onSubmit={saveRestaurant} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -253,24 +324,18 @@ export default function AdminSettingsPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={savingRestaurant}
-                className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {savingRestaurant ? "Guardando…" : "Guardar perfil"}
-              </button>
+            <div className="flex justify-end pt-1">
+              <SaveBtn saving={savingRestaurant} label="Guardar perfil" />
             </div>
           </form>
-        </article>
+        </section>
       )}
 
       {/* Tab: Branding */}
       {configTab === "branding" && (
-        <div className="grid gap-3 lg:grid-cols-2">
-          <article className="rounded-2xl border border-black/5 bg-white p-4">
-            <h3 className="mb-3 font-bold">Branding / Apariencia</h3>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section className="rounded-2xl bg-white p-5 shadow-sm md:p-6">
+            <SectionHeader icon={<CogIcon />} title="Branding / Apariencia" />
             <form onSubmit={saveBranding} className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 {(
@@ -305,20 +370,14 @@ export default function AdminSettingsPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={savingBranding}
-                  className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {savingBranding ? "Guardando…" : "Guardar apariencia"}
-                </button>
+              <div className="flex justify-end pt-1">
+                <SaveBtn saving={savingBranding} label="Guardar apariencia" />
               </div>
             </form>
-          </article>
+          </section>
 
-          <article className="rounded-2xl border border-black/5 bg-white p-4">
-            <h3 className="mb-3 font-bold">Vista previa</h3>
+          <section className="rounded-2xl bg-white p-5 shadow-sm md:p-6">
+            <SectionHeader icon={<CogIcon />} title="Vista previa" />
             <div className="grid grid-cols-4 gap-2">
               {(
                 [
@@ -330,7 +389,7 @@ export default function AdminSettingsPage() {
               ).map(({ key, label }) => (
                 <div key={key} className="text-center">
                   <span
-                    className="mb-1 block h-10 rounded-lg border border-stone-200"
+                    className="mb-1 block h-10 rounded-xl border border-stone-200"
                     style={{ background: branding[key] }}
                   />
                   <span className="text-xs text-stone-500">{label}</span>
@@ -338,31 +397,31 @@ export default function AdminSettingsPage() {
               ))}
             </div>
             <div
-              className="mt-4 flex items-center gap-3 rounded-xl p-4"
+              className="mt-4 flex items-center gap-3 rounded-2xl p-4"
               style={{ background: branding.backgroundColor }}
             >
               <button
-                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
                 style={{ background: branding.primaryColor }}
               >
                 Botón primario
               </button>
               <button
-                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
                 style={{ background: branding.accentColor }}
               >
                 Acento
               </button>
             </div>
-          </article>
+          </section>
         </div>
       )}
 
       {/* Tab: Preferencias + Sedes */}
       {configTab === "preferencias" && (
-        <div className="space-y-3">
-          <article className="rounded-2xl border border-black/5 bg-white p-4">
-            <h3 className="mb-3 font-bold">Preferencias operativas</h3>
+        <div className="space-y-4">
+          <section className="rounded-2xl bg-white p-5 shadow-sm md:p-6">
+            <SectionHeader icon={<CogIcon />} title="Preferencias operativas" />
             <form onSubmit={saveSettings} className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -440,34 +499,47 @@ export default function AdminSettingsPage() {
                   />
                 </div>
               </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={savingSettings}
-                  className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {savingSettings ? "Guardando…" : "Guardar preferencias"}
-                </button>
+              <div className="flex justify-end pt-1">
+                <SaveBtn saving={savingSettings} label="Guardar preferencias" />
               </div>
             </form>
-          </article>
+          </section>
 
           {branches.length > 0 && (
-            <article className="rounded-2xl border border-black/5 bg-white p-4">
-              <h3 className="font-bold">Sedes</h3>
-              <ul className="mt-2 space-y-1 text-sm text-stone-600">
+            <section className="rounded-2xl bg-white p-5 shadow-sm md:p-6">
+              <SectionHeader icon={<BuildingStorefrontIcon />} title="Sedes" />
+              <div className="space-y-2">
                 {branches
                   .slice(
                     branchPage * ITEMS_PER_PAGE,
                     (branchPage + 1) * ITEMS_PER_PAGE,
                   )
                   .map((b) => (
-                    <li key={b.id}>
-                      {b.name}
-                      {b.city ? ` · ${b.city}` : ""}
-                    </li>
+                    <div
+                      key={b.id}
+                      className="flex items-center gap-3 rounded-xl bg-stone-50 px-4 py-3"
+                    >
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [&>svg]:h-4 [&>svg]:w-4"
+                        style={{
+                          backgroundColor:
+                            "color-mix(in srgb, var(--admin-primary,#581c22) 10%, transparent)",
+                          color: "var(--admin-primary,#581c22)",
+                        }}
+                      >
+                        <BuildingStorefrontIcon />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-stone-800">
+                          {b.name}
+                        </p>
+                        {b.city && (
+                          <p className="text-xs text-stone-400">{b.city}</p>
+                        )}
+                      </div>
+                    </div>
                   ))}
-              </ul>
+              </div>
               {branches.length > ITEMS_PER_PAGE && (
                 <div className="mt-3 flex items-center justify-between text-xs text-stone-500">
                   <button
@@ -500,22 +572,22 @@ export default function AdminSettingsPage() {
                   </button>
                 </div>
               )}
-            </article>
+            </section>
           )}
         </div>
       )}
 
       {/* Tab: Usuarios */}
       {configTab === "usuarios" && (
-        <article className="rounded-2xl border border-black/5 bg-white p-4">
+        <section className="rounded-2xl bg-white p-5 shadow-sm md:p-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold">Usuarios y permisos</h3>
+            <SectionHeader icon={<UsersIcon />} title="Usuarios y permisos" />
             <button
               onClick={() => {
                 setShowUserForm((v) => !v);
                 setUserForm(EMPTY_USER_FORM);
               }}
-              className="rounded-xl bg-[var(--admin-primary,#581c22)] px-3 py-1.5 text-xs font-semibold text-white"
+              className="rounded-xl bg-[var(--admin-primary,#581c22)] px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
             >
               {showUserForm ? "Cancelar" : "+ Agregar usuario"}
             </button>
@@ -542,7 +614,7 @@ export default function AdminSettingsPage() {
                   setSavingUser(false);
                 }
               }}
-              className="mt-3 grid gap-3 rounded-xl bg-stone-50 p-3 sm:grid-cols-2"
+              className="mb-4 grid gap-3 rounded-2xl bg-stone-50 p-4 sm:grid-cols-2"
             >
               <div>
                 <label className="mb-1 block text-xs font-medium text-stone-600">
@@ -602,28 +674,39 @@ export default function AdminSettingsPage() {
                 </select>
               </div>
               <div className="flex justify-end sm:col-span-2">
-                <button
-                  type="submit"
-                  disabled={savingUser}
-                  className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {savingUser ? "Creando…" : "Crear usuario"}
-                </button>
+                <SaveBtn saving={savingUser} label="Crear usuario" />
               </div>
             </form>
           )}
 
-          <ul className="mt-3 divide-y divide-stone-100">
+          <div className="space-y-2">
             {users
               .slice(userPage * ITEMS_PER_PAGE, (userPage + 1) * ITEMS_PER_PAGE)
               .map((u) => (
-                <li
+                <div
                   key={u.id}
-                  className="flex items-center justify-between py-2"
+                  className="flex items-center gap-3 rounded-xl bg-stone-50 px-4 py-3"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{u.name}</p>
-                    <p className="text-xs text-stone-500">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                    style={{
+                      backgroundColor:
+                        "color-mix(in srgb, var(--admin-primary,#581c22) 12%, transparent)",
+                      color: "var(--admin-primary,#581c22)",
+                    }}
+                  >
+                    {u.name
+                      .split(" ")
+                      .map((w) => w[0] ?? "")
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2) || "?"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-stone-800">
+                      {u.name}
+                    </p>
+                    <p className="truncate text-xs text-stone-400">
                       {u.email} · <span className="capitalize">{u.role}</span>
                     </p>
                   </div>
@@ -638,20 +721,24 @@ export default function AdminSettingsPage() {
                       });
                       reloadUsers();
                     }}
-                    className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                    className="rounded-xl border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
                   >
                     Quitar
                   </button>
-                </li>
+                </div>
               ))}
             {users.length === 0 && (
-              <li className="py-4 text-center text-sm text-stone-400">
-                Sin usuarios vinculados.
-              </li>
+              <div className="flex flex-col items-center gap-2 py-10 text-center">
+                <UserCircleIcon className="h-10 w-10 text-stone-200" />
+                <p className="text-sm text-stone-400">
+                  Sin usuarios vinculados
+                </p>
+              </div>
             )}
-          </ul>
+          </div>
+
           {users.length > ITEMS_PER_PAGE && (
-            <div className="mt-2 flex items-center justify-between text-xs text-stone-500">
+            <div className="mt-3 flex items-center justify-between text-xs text-stone-500">
               <button
                 onClick={() => setUserPage((p) => Math.max(0, p - 1))}
                 disabled={userPage === 0}
@@ -680,7 +767,7 @@ export default function AdminSettingsPage() {
               </button>
             </div>
           )}
-        </article>
+        </section>
       )}
     </div>
   );

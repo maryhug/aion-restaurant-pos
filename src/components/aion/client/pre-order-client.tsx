@@ -124,6 +124,8 @@ export function AionPreOrderClient({
         const d = (await resRes.json()) as { error?: string };
         throw new Error(d.error ?? "No se pudo crear la reserva");
       }
+      const resData = (await resRes.json()) as { reservation: { id: string } };
+      const reservationId = resData.reservation.id;
 
       // 2. Crear orden con los ítems seleccionados
       const orderRes = await fetch("/api/orders", {
@@ -132,7 +134,9 @@ export function AionPreOrderClient({
         body: JSON.stringify({
           restaurantId,
           tableId,
+          reservationId,
           customerName: name,
+          customerEmail: email,
           items: items.map((item) => ({
             menuItemId: item.menu_item_id,
             quantity: item.quantity,

@@ -2,13 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAdminTenant } from "@/features/admin/tenant-context";
-import { DataTable } from "@/features/admin/components/data-table";
 import {
   Modal,
   ModalActions,
   Field,
   inputCls,
 } from "@/features/admin/components/modal";
+import {
+  CalendarDaysIcon,
+  UsersIcon,
+  ChevronRightIcon,
+} from "@/features/admin/components/icons";
 import type { Reservation, TableItem } from "@/features/admin/types";
 
 type MesasData = { tables: TableItem[]; reservations: Reservation[] };
@@ -28,6 +32,19 @@ const EMPTY_RESERVA = {
   notes: "",
 };
 
+const TABLE_STATUS_COLOR: Record<string, string> = {
+  libre: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  ocupada: "bg-red-50 text-red-700 border-red-200",
+  reservada: "bg-amber-50 text-amber-700 border-amber-200",
+  limpieza: "bg-blue-50 text-blue-700 border-blue-200",
+};
+
+const RESERVA_STATUS_BADGE: Record<string, string> = {
+  pendiente: "bg-amber-100 text-amber-700",
+  confirmada: "bg-emerald-100 text-emerald-700",
+  cancelada: "bg-red-100 text-red-700",
+};
+
 async function api(method: string, body: unknown) {
   const r = await fetch("/api/admin/mesas-reservas", {
     method,
@@ -38,6 +55,8 @@ async function api(method: string, body: unknown) {
     throw new Error((await r.json().catch(() => ({}))).error ?? "Error");
   return r.json();
 }
+
+/* ─── Page ───────────────────────────────────────────────────── */
 
 export default function AdminTablesReservationsPage() {
   const { branchId } = useAdminTenant();
@@ -76,7 +95,6 @@ export default function AdminTablesReservationsPage() {
     setSelectedTable(null);
     setTableModal("create");
   }
-
   function openTableEdit(t: TableItem) {
     setSelectedTable(t);
     setTableForm({
@@ -87,19 +105,11 @@ export default function AdminTablesReservationsPage() {
     });
     setTableModal("edit");
   }
-
   async function handleTableSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        entity: "table",
-        number: tableForm.number,
-        capacity: tableForm.capacity,
-        zone: tableForm.zone,
-        status: tableForm.status,
-        branchId,
-      };
+      const payload = { entity: "table", ...tableForm, branchId };
       if (tableModal === "create") await api("POST", payload);
       else await api("PUT", { ...payload, id: selectedTable!.id });
       setTableModal(null);
@@ -110,7 +120,6 @@ export default function AdminTablesReservationsPage() {
       setSaving(false);
     }
   }
-
   async function deleteTable(t: TableItem) {
     if (!confirm(`¿Eliminar mesa ${t.number}?`)) return;
     await api("DELETE", { entity: "table", id: t.id }).catch((e) =>
@@ -128,7 +137,6 @@ export default function AdminTablesReservationsPage() {
     setSelectedReserva(null);
     setReservaModal("create");
   }
-
   function openReservaEdit(r: Reservation) {
     setSelectedReserva(r);
     setReservaForm({
@@ -145,7 +153,6 @@ export default function AdminTablesReservationsPage() {
     });
     setReservaModal("edit");
   }
-
   async function handleReservaSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -166,7 +173,6 @@ export default function AdminTablesReservationsPage() {
       setSaving(false);
     }
   }
-
   async function deleteReserva(r: Reservation) {
     if (!confirm(`¿Eliminar reserva de ${r.customer}?`)) return;
     await api("DELETE", { entity: "reservation", id: r.id }).catch((e) =>
@@ -177,8 +183,13 @@ export default function AdminTablesReservationsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-stone-400">
-        Cargando mesas y reservas…
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-2xl bg-stone-100"
+          />
+        ))}
       </div>
     );
   }
@@ -191,161 +202,177 @@ export default function AdminTablesReservationsPage() {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Tabs */}
-      <div className="flex gap-2">
-        {(["mesas", "reservas"] as MesasTab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-xl px-3 py-2 text-sm capitalize ${
-              tab === t ? "bg-black text-white" : "border bg-white"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-stone-100 bg-white p-4 shadow-sm">
+        <div className="flex gap-1.5">
+          {(["mesas", "reservas"] as MesasTab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-colors ${
+                tab === t
+                  ? "bg-[var(--admin-primary,#581c22)] text-white"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto">
+          {tab === "mesas" ? (
+            <button
+              onClick={openTableCreate}
+              className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              + Nueva mesa
+            </button>
+          ) : (
+            <button
+              onClick={openReservaCreate}
+              className="rounded-xl bg-[var(--admin-primary,#581c22)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              + Nueva reserva
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Tab: Mesas */}
+      {/* Mesas tab */}
       {tab === "mesas" && (
-        <article className="rounded-2xl border border-[var(--admin-border,#f1cfd4)] bg-white p-4 space-y-4">
-          {/* Resumen visual */}
+        <>
+          {/* Visual grid */}
           {data.tables.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
               {data.tables.map((t) => (
                 <div
                   key={t.id}
-                  className="rounded-xl border p-2 text-center text-xs"
+                  className={`rounded-2xl border p-3 text-center ${TABLE_STATUS_COLOR[t.status] ?? "bg-stone-50 border-stone-200"}`}
                 >
-                  Mesa {t.number}
-                  <p className="font-semibold capitalize">{t.status}</p>
+                  <p className="text-lg font-bold">Mesa {t.number}</p>
+                  <p className="text-xs font-medium capitalize">{t.status}</p>
+                  <p className="text-[10px] opacity-70">{t.capacity} pers.</p>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Tabla de gestión */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold">Gestión de mesas</h3>
-              <button
-                onClick={openTableCreate}
-                className="rounded-xl bg-[var(--admin-primary,#581c22)] px-3 py-1.5 text-xs font-semibold text-white"
-              >
-                + Nueva mesa
-              </button>
+          {/* Management cards */}
+          {data.tables.length === 0 ? (
+            <div className="flex h-40 items-center justify-center rounded-2xl border border-dashed border-stone-200 text-sm text-stone-400">
+              No hay mesas registradas
             </div>
-            <DataTable
-              rows={data.tables}
-              rowKey={(r) => String(r.id)}
-              pageSize={5}
-              columns={[
-                { key: "number", label: "Mesa" },
-                { key: "capacity", label: "Cap." },
-                { key: "zone", label: "Zona" },
-                { key: "status", label: "Estado" },
-                {
-                  key: "acciones",
-                  label: "Acciones",
-                  render: (r) => (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => openTableEdit(r as unknown as TableItem)}
-                        className="rounded border px-2 py-0.5 text-xs hover:bg-stone-50"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => deleteTable(r as unknown as TableItem)}
-                        className="rounded border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  ),
-                },
-              ]}
-            />
-          </div>
-        </article>
-      )}
-
-      {/* Tab: Reservas */}
-      {tab === "reservas" && (
-        <article className="rounded-2xl border border-[var(--admin-border,#f1cfd4)] bg-white p-4 space-y-4">
-          {/* Reservas próximas */}
-          {data.reservations.length > 0 && (
-            <div>
-              <h3 className="mb-2 text-sm font-bold">Reservas próximas</h3>
-              <ul className="space-y-1 text-sm">
-                {data.reservations.slice(0, 5).map((r) => (
-                  <li
-                    key={r.id}
-                    className="rounded-lg border border-[var(--admin-border,#f1cfd4)] px-3 py-2"
+          ) : (
+            <div className="space-y-3">
+              {data.tables.map((t) => (
+                <article
+                  key={t.id}
+                  className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm"
+                >
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-bold border ${TABLE_STATUS_COLOR[t.status] ?? "bg-stone-50 border-stone-200"}`}
                   >
-                    {r.customer} · {r.date} {r.time} · {r.table}
-                  </li>
-                ))}
-                {data.reservations.length > 5 && (
-                  <li className="text-xs text-stone-400">
-                    +{data.reservations.length - 5} más en la tabla
-                  </li>
-                )}
-              </ul>
+                    {t.number}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-stone-900">Mesa {t.number}</p>
+                    <p className="text-sm text-stone-500">
+                      {t.capacity} personas{t.zone ? ` · ${t.zone}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${TABLE_STATUS_COLOR[t.status] ?? ""}`}
+                  >
+                    {t.status}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => openTableEdit(t)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--admin-primary,#581c22)] text-white hover:opacity-80"
+                    >
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteTable(t)}
+                      className="rounded-xl border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
+        </>
+      )}
 
-          {/* Tabla de gestión */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold">Gestión de reservas</h3>
-              <button
-                onClick={openReservaCreate}
-                className="rounded-xl bg-[var(--admin-primary,#581c22)] px-3 py-1.5 text-xs font-semibold text-white"
-              >
-                + Nueva reserva
-              </button>
+      {/* Reservas tab */}
+      {tab === "reservas" && (
+        <>
+          {data.reservations.length === 0 ? (
+            <div className="flex h-40 items-center justify-center rounded-2xl border border-dashed border-stone-200 text-sm text-stone-400">
+              No hay reservas registradas
             </div>
-            <DataTable
-              rows={data.reservations}
-              rowKey={(r) => String(r.id)}
-              pageSize={10}
-              columns={[
-                { key: "customer", label: "Cliente" },
-                { key: "date", label: "Fecha" },
-                { key: "time", label: "Hora" },
-                { key: "people", label: "Pers." },
-                { key: "table", label: "Mesa" },
-                { key: "status", label: "Estado" },
-                {
-                  key: "acciones",
-                  label: "Acciones",
-                  render: (r) => (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() =>
-                          openReservaEdit(r as unknown as Reservation)
-                        }
-                        className="rounded border px-2 py-0.5 text-xs hover:bg-stone-50"
+          ) : (
+            <div className="space-y-3">
+              {data.reservations.map((r) => (
+                <article
+                  key={r.id}
+                  className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                    style={{
+                      backgroundColor:
+                        "color-mix(in srgb, var(--admin-primary,#581c22) 10%, transparent)",
+                      color: "var(--admin-primary,#581c22)",
+                    }}
+                  >
+                    <CalendarDaysIcon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-stone-900">
+                        {r.customer}
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${RESERVA_STATUS_BADGE[r.status] ?? "bg-stone-100 text-stone-600"}`}
                       >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() =>
-                          deleteReserva(r as unknown as Reservation)
-                        }
-                        className="rounded border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
-                      >
-                        Eliminar
-                      </button>
+                        {r.status}
+                      </span>
                     </div>
-                  ),
-                },
-              ]}
-            />
-          </div>
-        </article>
+                    <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-stone-500">
+                      <span className="flex items-center gap-1">
+                        <CalendarDaysIcon className="h-3 w-3 text-stone-300" />
+                        {r.date} {r.time}
+                      </span>
+                      <span>{r.table}</span>
+                      <span className="flex items-center gap-1">
+                        <UsersIcon className="h-3 w-3 text-stone-300" />
+                        {r.people} pers.
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => openReservaEdit(r)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--admin-primary,#581c22)] text-white hover:opacity-80"
+                    >
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteReserva(r)}
+                      className="rounded-xl border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal Mesa */}

@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
       tableId?: string | null;
       branchId?: string | null;
       customerName?: string | null;
+      reservationId?: string | null;
       items?: { menuItemId: string; quantity: number; unitPrice: number }[];
     };
 
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
       branchId,
       items,
       customerName,
+      reservationId,
     } = body;
 
     let restaurantId = bodyRestaurantId ?? null;
@@ -114,7 +116,9 @@ export async function POST(req: NextRequest) {
         table_id: tableId ?? null,
         restaurant_id: itemsRestaurantId ?? restaurantId,
         branch_id: branchId ?? null,
+        reservation_id: reservationId ?? null,
         customer_name: customerName ?? null,
+        customer_phone: null,
         status: "pending" satisfies OrderStatus,
         total,
         order_items: {

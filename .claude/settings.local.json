@@ -15,7 +15,13 @@
       "Bash(Test-Path *)",
       "Bash(Select-Object -First 20)",
       "Bash(npx prisma *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Select-Object Name)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\ASUS\\\\WebstormProjects\\\\aion-restaurant-pos\\\\src\\\\app\\\\api\\\\admin\\\\orders\\\\[id]\")",
+      "Bash(Out-Null)",
+      "Bash(xargs grep -l \"orders\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -E \"\\\\.\\(prisma|sql\\)$\")"
     ]
   }
 }

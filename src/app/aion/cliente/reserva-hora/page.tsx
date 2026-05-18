@@ -112,14 +112,19 @@ export default function AionReservaHoraPage() {
         const d = (await resRes.json()) as { error?: string };
         throw new Error(d.error ?? "No se pudo crear la reserva");
       }
+      const resData = (await resRes.json()) as { reservation: { id: string } };
+      const reservationId = resData.reservation.id;
 
-      // 2. Crear orden en la BD con los ítems del carrito
+      // 2. Crear orden en la BD con los ítems del carrito, enlazando reserva y cliente
       const orderRes = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           restaurantId,
           tableId,
+          reservationId,
+          customerName: name.trim(),
+          customerEmail: email.trim(),
           items: items.map((i) => ({
             menuItemId: i.dishId,
             quantity: i.quantity,

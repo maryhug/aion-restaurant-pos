@@ -7,17 +7,18 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return auth.response;
   const { restaurantId } = auth.payload;
 
-  const tableIds = await prisma.tables
-    .findMany({ where: { restaurant_id: restaurantId }, select: { id: true } })
-    .then((ts) => ts.map((t) => t.id));
-
   const orders = await prisma.orders.findMany({
-    where: { table_id: { in: tableIds } },
+    where: { restaurant_id: restaurantId },
     include: {
       tables: { select: { number: true } },
       reservations: {
-        include: { users: { select: { name: true } } },
+        select: {
+          customer_name: true,
+          customer_email: true,
+          users: { select: { name: true, email: true } },
+        },
       },
+      placed_by_user: { select: { name: true, email: true } },
       sales: { select: { payment_method: true }, take: 1 },
     },
     orderBy: { created_at: "desc" },
@@ -28,7 +29,13 @@ export async function GET(req: NextRequest) {
     fullId: o.id,
     date: o.created_at.toISOString(),
     tableOrType: o.tables ? `Mesa ${o.tables.number}` : "Sin mesa",
-    customer: o.reservations?.users?.name ?? "-",
+    // Priority: direct field > placed_by_user > reservation customer_name > reservation user
+    customer:
+      o.customer_name ??
+      o.placed_by_user?.name ??
+      o.reservations?.customer_name ??
+      o.reservations?.users?.name ??
+      "-",
     status: o.status,
     paymentMethod: o.sales[0]?.payment_method ?? "pendiente",
     total: Number(o.total),

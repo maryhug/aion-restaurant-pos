@@ -58,10 +58,13 @@ export async function POST(req: NextRequest) {
       data: {
         user_id: userId,
         table_id: tableId,
+        restaurant_id: restaurantId,
         date: new Date(date),
         time: new Date(`1970-01-01T${time}:00`),
         party_size: partySize,
         status: "confirmed",
+        customer_name: name,
+        customer_email: email,
       },
       select: { id: true, date: true, time: true, party_size: true },
     });
